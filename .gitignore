@@ -1,5 +1,7 @@
 # Custom ignores
 *.pth
+dataset/
+finetuning_dataset/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
