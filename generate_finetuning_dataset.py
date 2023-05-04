@@ -20,8 +20,9 @@ OUTPUT_FOLDER = config["PATHS"]["FINETUNE_DATASET"]
 def load_gt_masks() -> dict: # -> Dict[int, Image]:
     """Loads the ground truth masks from the OUTPUT_FOLDER folder."""
     ground_truth_masks = {}
-    for k in range(len(os.listdir(OUTPUT_FOLDER))):
-        mask_path = os.path.join(OUTPUT_FOLDER, "masks", str(k) + ".png")
+    masks_path = os.path.join(OUTPUT_FOLDER, "masks")
+    for k in range(len(os.listdir(masks_path))):
+        mask_path = os.path.join(masks_path, str(k) + ".png")
         gt_grayscale = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
         ground_truth_masks[int(k)] = (gt_grayscale == 0)
     return ground_truth_masks
@@ -29,8 +30,9 @@ def load_gt_masks() -> dict: # -> Dict[int, Image]:
 def load_bbox_coords() -> List[np.ndarray]:
     """Loads the bounding box coordinates from the OUTPUT_FOLDER folder."""
     bbox_coords = {}
-    for k in range(len(os.listdir(OUTPUT_FOLDER))):
-        bbox_path = os.path.join(OUTPUT_FOLDER, "bboxes", str(k) + ".txt")
+    bboxes_path = os.path.join(OUTPUT_FOLDER, "bboxes")
+    for k in range(len(os.listdir(bboxes_path))):
+        bbox_path = os.path.join(bboxes_path, str(k) + ".txt")
         with open(bbox_path, "r") as f:
             bbox = np.array([int(x) for x in f.read().split()])
         bbox_coords[int(k)] = bbox
@@ -85,7 +87,7 @@ def mask_to_bbox(mask: Image) -> np.ndarray:
 
 def check_if_finetuning_dataset_exists() -> bool:
     """Checks if the finetuning dataset exists."""
-    return os.path.exists("finetuning_dataset")
+    return os.path.exists(OUTPUT_FOLDER)
 
 
 def generate_finetuning_dataset() -> None:
