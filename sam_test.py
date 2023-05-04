@@ -38,9 +38,9 @@ print("Image loaded")
 
 # Load the model
 print("\nLoading SAM model...")
-# sam = sam_model_registry["vit_h"](checkpoint="./sam_vit_h_4b8939.pth")
+sam = sam_model_registry["vit_h"](checkpoint="./sam_vit_h_4b8939.pth")
 # sam = sam_model_registry["vit_l"](checkpoint="./sam_vit_l_0b3195.pth")
-sam = sam_model_registry["vit_b"](checkpoint="./sam_vit_b_01ec64.pth")
+# sam = sam_model_registry["vit_b"](checkpoint="./sam_vit_b_01ec64.pth")
 device = "cuda" if torch.cuda.is_available() else "cpu"
 sam = sam.to(device)
 print("SAM model loaded")
@@ -56,11 +56,12 @@ plt.figure(figsize=(20,20))
 plt.imshow(image)
 show_anns(masks)
 plt.axis('off')
-plt.savefig("./test_masks.png")
+plt.savefig("./test_masks_hq.png")
 print("Masks generated")
 
 predictor = SamPredictor(sam)
 predictor.set_image(image)
+help(predictor.predict)
 masks, _, _ = predictor.predict("boulder")
 
 # Save the masks in an image
