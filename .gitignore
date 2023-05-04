@@ -1,7 +1,7 @@
 # Custom ignores
 *.pth
 dataset/
-finetuning_dataset/
+saved_models/
 config.ini
 
 # Byte-compiled / optimized / DLL files
