@@ -8,6 +8,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import configparser
 from generate_dataset import check_if_dataset_exists
+from skimage.morphology import label
+from typing import List
 
 # config
 config = configparser.ConfigParser()
@@ -60,14 +62,15 @@ def show_image_with_mask(image_number: int, bbox_coords: List[np.ndarray], groun
     plt.axis('off')
     plt.show()
 
+def convert_mask_to_binary(mask: Image) -> Image:
+    """Converts a mask to a binary mask."""
+    mask = mask.convert("L")
+    mask = mask.point(lambda x: 0 if x >= 128 else 255, '1')
+    return mask
+
 def mask_to_bbox(mask: Image) -> np.ndarray:
     """Converts a mask to a bounding box such that the bounding box contains the mask.
     The bounding box is generated with some noise and padding."""
-    # Convert the mask to a binary mask
-    mask = mask.convert("L")
-    mask = mask.point(lambda x: 0 if x >= 128 else 255, '1')
-    mask = mask.convert("1")
-
     # Get the bounding box
     bbox = mask.getbbox()
 
@@ -85,7 +88,18 @@ def mask_to_bbox(mask: Image) -> np.ndarray:
 
 def check_if_finetuning_dataset_exists() -> bool:
     """Checks if the finetuning dataset exists."""
-    return os.path.exists("finetuning_dataset")
+    return os.path.exists(OUTPUT_FOLDER)
+
+def separate_masks(mask: Image) -> List[np.ndarray]:
+    """If they are several convex components in the mask, separate them into individual masks."""
+    mask = np.array(mask).astype(bool)
+    separated_mask = label(mask)
+    blobs = []
+    for i in np.unique(separated_mask):
+        if i == 0: # background
+            continue
+        blobs.append((separated_mask == i).astype(int))
+    return blobs
 
 
 def generate_finetuning_dataset() -> None:
@@ -147,23 +161,37 @@ def generate_finetuning_dataset() -> None:
                 try:
                     # Load the mask
                     mask_path: str = os.path.join(img_folder, "mask_" + str(j) + ".png")
-                    mask: Image = Image.open(mask_path)
+                    original_mask: Image = Image.open(mask_path)
+                    original_mask = convert_mask_to_binary(original_mask)
+                    masks: list = separate_masks(original_mask)
 
-                    # Generate the bounding box
-                    bbox: np.ndarray = mask_to_bbox(mask)
+                    if len(masks) > 1:
+                        print(f"Found {len(masks)} masks in image {i} mask {j}")
+                    elif len(masks) == 0:
+                        print(f"Found 0 masks in image {i} mask {j}")
+                        continue
 
-                    # Save the mask
-                    mask.save(os.path.join(OUTPUT_FOLDER, "masks", str(num_masks_added) + ".png"))
+                    for mask in masks:
+                        # Convert mask from np.ndarray to Image
+                        mask = Image.fromarray(mask.astype(np.uint8) * 255)
 
-                    # Copy the image
-                    img_path: str = os.path.join(img_folder, "image.png")
-                    img: Image = Image.open(img_path)
-                    img.save(os.path.join(OUTPUT_FOLDER, "images", str(num_masks_added) + ".png"))
+                        bbox: np.ndarray = mask_to_bbox(mask)
 
-                    # Save the bbox with numpy savetxt
-                    np.savetxt(os.path.join(OUTPUT_FOLDER, "bboxes", str(num_masks_added) + ".txt"), bbox, fmt="%d")
+                        # Invert the mask
+                        mask = Image.fromarray(np.invert(np.array(mask)))
+                    
+                        # Save the mask
+                        mask.save(os.path.join(OUTPUT_FOLDER, "masks", str(num_masks_added) + ".png"))
 
-                    num_masks_added += 1
+                        # Copy the image
+                        img_path: str = os.path.join(img_folder, "image.png")
+                        img: Image = Image.open(img_path)
+                        img.save(os.path.join(OUTPUT_FOLDER, "images", str(num_masks_added) + ".png"))
+
+                        # Save the bbox with numpy savetxt
+                        np.savetxt(os.path.join(OUTPUT_FOLDER, "bboxes", str(num_masks_added) + ".txt"), bbox, fmt="%d")
+
+                        num_masks_added += 1
                 except Exception as e:
                     num_masks_failed += 1
                     print(f"Error processing image {i} mask {j}: {e}")
