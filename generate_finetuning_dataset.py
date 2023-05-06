@@ -199,9 +199,9 @@ def generate_finetuning_dataset() -> None:
                         # Save the bbox with numpy savetxt
                         np.savetxt(os.path.join(folder, "bboxes", str(num_masks_added) + ".txt"), bbox, fmt="%d")
 
-                        num_masks_added += 1
+                        num_masks_added[class_mask] += 1
                 except Exception as e:
-                    num_masks_failed += 1
+                    num_masks_failed[class_mask] += 1
                     print(f"Error processing image {i} mask {j}: {e}")
                     continue
 
