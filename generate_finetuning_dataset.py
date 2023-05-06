@@ -15,7 +15,7 @@ from typing import List
 config = configparser.ConfigParser()
 config.read('config.ini')
 
-CLASSES = ["edge", "boulder", "crack"]
+CLASSES = ["edge", "boulder", "crack", "rough_patch"]
 DATASET_FOLDER = config["PATHS"]["LABELBOX_DATASET"]
 OUTPUT_FOLDER = config["PATHS"]["FINETUNE_DATASET"]
 
@@ -118,9 +118,11 @@ def generate_finetuning_dataset() -> None:
     # Create the output folder
     if not os.path.exists(OUTPUT_FOLDER):
         os.mkdir(OUTPUT_FOLDER)
-        os.mkdir(os.path.join(OUTPUT_FOLDER, "images"))
-        os.mkdir(os.path.join(OUTPUT_FOLDER, "masks"))
-        os.mkdir(os.path.join(OUTPUT_FOLDER, "bboxes"))
+        for class_mask in CLASSES:
+            os.mkdir(os.path.join(OUTPUT_FOLDER, class_mask))
+            os.mkdir(os.path.join(OUTPUT_FOLDER, class_mask, "images"))
+            os.mkdir(os.path.join(OUTPUT_FOLDER, class_mask, "masks"))
+            os.mkdir(os.path.join(OUTPUT_FOLDER, class_mask, "bboxes"))
 
     # For each image folder, open classes.txt and get the classes
     # For each line (i.e. mask) in classes.txt, load the mask if the class is in CLASSES
@@ -129,7 +131,7 @@ def generate_finetuning_dataset() -> None:
     # It if generated with some noise and padding
 
     # The final architecture of the dataset folder is:
-    # <OUTPUT_FOLDER>
+    # <OUTPUT_FOLDER/class_name>
     # ├── images
     # │   ├── 0.png
     # │   ├── 1.png
@@ -146,8 +148,11 @@ def generate_finetuning_dataset() -> None:
     # │   ├── ...
     # │   └── N.png
 
-    num_masks_added = 0
-    num_masks_failed = 0
+    num_masks_added = {}
+    num_masks_failed = {}
+    for class_mask in CLASSES:
+        num_masks_added[class_mask] = 0
+        num_masks_failed[class_mask] = 0
 
     for i in tqdm(range(num_images)):
         img_folder = os.path.join(DATASET_FOLDER, str(i))
@@ -173,6 +178,7 @@ def generate_finetuning_dataset() -> None:
                         print(f"Found 0 masks in image {i} mask {j}")
                         continue
 
+                    folder = os.path.join(OUTPUT_FOLDER, class_mask)
                     for mask in masks:
                         # Convert mask from np.ndarray to Image
                         mask = Image.fromarray(mask.astype(np.uint8) * 255)
@@ -183,15 +189,15 @@ def generate_finetuning_dataset() -> None:
                         mask = Image.fromarray(np.invert(np.array(mask)))
                     
                         # Save the mask
-                        mask.save(os.path.join(OUTPUT_FOLDER, "masks", str(num_masks_added) + ".png"))
+                        mask.save(os.path.join(folder, "masks", str(num_masks_added) + ".png"))
 
                         # Copy the image
                         img_path: str = os.path.join(img_folder, "image.png")
                         img: Image = Image.open(img_path)
-                        img.save(os.path.join(OUTPUT_FOLDER, "images", str(num_masks_added) + ".png"))
+                        img.save(os.path.join(folder, "images", str(num_masks_added) + ".png"))
 
                         # Save the bbox with numpy savetxt
-                        np.savetxt(os.path.join(OUTPUT_FOLDER, "bboxes", str(num_masks_added) + ".txt"), bbox, fmt="%d")
+                        np.savetxt(os.path.join(folder, "bboxes", str(num_masks_added) + ".txt"), bbox, fmt="%d")
 
                         num_masks_added += 1
                 except Exception as e:
@@ -199,8 +205,9 @@ def generate_finetuning_dataset() -> None:
                     print(f"Error processing image {i} mask {j}: {e}")
                     continue
 
-    print(f"Generated {num_masks_added} masks")
-    print(f"Failed to generate {num_masks_failed} masks")
+    for class_mask in CLASSES:
+        print(f"Added {num_masks_added[class_mask]} masks for class {class_mask}")
+        print(f"Failed to add {num_masks_failed[class_mask]} masks for class {class_mask}")
 
 
 if __name__ == "__main__":
