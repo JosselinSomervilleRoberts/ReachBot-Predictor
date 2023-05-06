@@ -19,20 +19,20 @@ CLASSES = ["edge", "boulder", "crack", "rough_patch"]
 DATASET_FOLDER = config["PATHS"]["LABELBOX_DATASET"]
 OUTPUT_FOLDER = config["PATHS"]["FINETUNE_DATASET"]
 
-def load_gt_masks() -> dict: # -> Dict[int, Image]:
+def load_gt_masks(class_name: str) -> dict: # -> Dict[int, Image]:
     """Loads the ground truth masks from the OUTPUT_FOLDER folder."""
     ground_truth_masks = {}
-    masks_path = os.path.join(OUTPUT_FOLDER, "masks")
+    masks_path = os.path.join(OUTPUT_FOLDER, class_name, "masks")
     for k in range(len(os.listdir(masks_path))):
         mask_path = os.path.join(masks_path, str(k) + ".png")
         gt_grayscale = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
         ground_truth_masks[int(k)] = (gt_grayscale == 0)
     return ground_truth_masks
 
-def load_bbox_coords() -> List[np.ndarray]:
+def load_bbox_coords(class_name: str) -> List[np.ndarray]:
     """Loads the bounding box coordinates from the OUTPUT_FOLDER folder."""
     bbox_coords = {}
-    bboxes_path = os.path.join(OUTPUT_FOLDER, "bboxes")
+    bboxes_path = os.path.join(OUTPUT_FOLDER, class_name, "bboxes")
     for k in range(len(os.listdir(bboxes_path))):
         bbox_path = os.path.join(bboxes_path, str(k) + ".txt")
         with open(bbox_path, "r") as f:
@@ -54,8 +54,8 @@ def show_box(box: np.ndarray, ax: plt.Axes) -> None:
     w, h = box[2] - box[0], box[3] - box[1]
     ax.add_patch(plt.Rectangle((x0, y0), w, h, edgecolor='green', facecolor=(0,0,0,0), lw=2))
 
-def show_image_with_mask(image_number: int, bbox_coords: List[np.ndarray], ground_truth_masks: dict) -> None:
-    image = cv2.imread(f"{OUTPUT_FOLDER}/images/{image_number}.png")
+def show_image_with_mask(class_name: str, image_number: int, bbox_coords: List[np.ndarray], ground_truth_masks: dict) -> None:
+    image = cv2.imread(f"{OUTPUT_FOLDER}/{class_name}/images/{image_number}.png")
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     plt.figure(figsize=(10,10))
     plt.imshow(image)
@@ -189,15 +189,15 @@ def generate_finetuning_dataset() -> None:
                         mask = Image.fromarray(np.invert(np.array(mask)))
                     
                         # Save the mask
-                        mask.save(os.path.join(folder, "masks", str(num_masks_added) + ".png"))
+                        mask.save(os.path.join(folder, "masks", str(num_masks_added[class_mask]) + ".png"))
 
                         # Copy the image
                         img_path: str = os.path.join(img_folder, "image.png")
                         img: Image = Image.open(img_path)
-                        img.save(os.path.join(folder, "images", str(num_masks_added) + ".png"))
+                        img.save(os.path.join(folder, "images", str(num_masks_added[class_mask]) + ".png"))
 
                         # Save the bbox with numpy savetxt
-                        np.savetxt(os.path.join(folder, "bboxes", str(num_masks_added) + ".txt"), bbox, fmt="%d")
+                        np.savetxt(os.path.join(folder, "bboxes", str(num_masks_added[class_mask]) + ".txt"), bbox, fmt="%d")
 
                         num_masks_added[class_mask] += 1
                 except Exception as e:
@@ -216,6 +216,7 @@ if __name__ == "__main__":
         generate_finetuning_dataset()
     else:
         print("Finetuning dataset already exists. Skipping generation.")
-        gt_masks = load_gt_masks()
-        bbox_coords = load_bbox_coords()
-        show_image_with_mask(0, bbox_coords, gt_masks)
+        class_name = "boulder"
+        gt_masks = load_gt_masks(class_name)
+        bbox_coords = load_bbox_coords(class_name)
+        show_image_with_mask(class_name, 0, bbox_coords, gt_masks)
