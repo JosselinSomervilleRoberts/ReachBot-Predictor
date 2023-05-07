@@ -15,6 +15,7 @@ from toolbox.log import Logger, print_color, sdebug, warn
 from toolbox.aws import shutdown
 import argparse
 from PIL import Image
+import io
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Finetune SAM")
@@ -227,10 +228,10 @@ def compare_untrained_and_trained(class_name: str, trained_model, index: int):
     axs[2].set_title('Ground Truth Mask', fontsize=26)
     axs[2].axis('off')
 
-    img_plt = plt.gcf()
-    image = Image.fromarray(np.uint8(img_plt.get_cmap()(img_plt.get_array())*255))
-    image = image.convert('RGB')
-    l.log_image(f"Comparison {index}", image)
+    img_buf = io.BytesIO()
+    plt.savefig(img_buf, format='png')
+    im = Image.open(img_buf)
+    l.log_image(f"Comparison {index}", im)
 
 if __name__ == "__main__":
     args = parse_args()
