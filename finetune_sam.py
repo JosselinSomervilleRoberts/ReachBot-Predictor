@@ -11,7 +11,7 @@ from statistics import mean
 from torch.nn.functional import threshold, normalize
 import numpy as np
 import matplotlib.pyplot as plt
-from toolbox.log import Logger, print_color
+from toolbox.log import Logger, print_color, sdebug
 from toolbox.aws import shutdown
 import argparse
 
@@ -220,6 +220,7 @@ if __name__ == "__main__":
     l.save = args.save
     l.save_path = args.save_path
     l.tensorboard = args.tensorboard
+    sdebug(args)
     losses, trained_model = finetune(args.class_name, args.lr, args.weight_decay, args.num_epochs, args.save_model, args.n_train)
 
     # Compare on training data
