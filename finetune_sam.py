@@ -208,7 +208,7 @@ def compare_untrained_and_trained(class_name: str, trained_model, index: int):
         multimask_output=False,
     )
 
-    _, axs = plt.subplots(1, 3, figsize=(25, 8))
+    _, axs = plt.subplots(1, 3, figsize=(16, 4))
 
     axs[0].imshow(image)
     show_mask(masks_tuned, axs[0])
@@ -231,7 +231,8 @@ def compare_untrained_and_trained(class_name: str, trained_model, index: int):
     img_buf = io.BytesIO()
     plt.savefig(img_buf, format='png')
     im = Image.open(img_buf)
-    l.log_image(f"Comparison {index}", im)
+    l.log_image(f"Comparison", im)
+    plt.close()
 
 if __name__ == "__main__":
     args = parse_args()
