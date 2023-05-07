@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from toolbox.log import Logger, print_color, sdebug, warn
 from toolbox.aws import shutdown
 import argparse
+from PIL import Image
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Finetune SAM")
@@ -206,31 +207,30 @@ def compare_untrained_and_trained(class_name: str, trained_model, index: int):
         multimask_output=False,
     )
 
-    _, axs = plt.subplots(1, 3, figsize=(30, 12))
+    _, axs = plt.subplots(1, 3, figsize=(25, 8))
 
     axs[0].imshow(image)
     show_mask(masks_tuned, axs[0])
     show_box(input_bbox, axs[0])
     axs[0].set_title('Mask with Tuned Model', fontsize=26)
     axs[0].axis('off')
-    img = axs[0].get_images()
-    l.log_image("Tuned model", img[0])
 
     axs[1].imshow(image)
     show_mask(masks_orig, axs[1])
     show_box(input_bbox, axs[1])
     axs[1].set_title('Mask with Untuned Model', fontsize=26)
     axs[1].axis('off')
-    img = axs[1].get_images()
-    l.log_image("Untuned model", img[0])
 
     axs[2].imshow(image)
     show_mask(ground_truth_masks[k], axs[2])
     show_box(input_bbox, axs[2])
     axs[2].set_title('Ground Truth Mask', fontsize=26)
     axs[2].axis('off')
-    img = axs[2].get_images()
-    l.log_image("Ground truth", img[0])
+
+    img_plt = plt.gcf()
+    image = Image.fromarray(np.uint8(img_plt * 255))
+    image = image.convert('RGB')
+    l.log_image(f"Comparison {index}", image)
 
 if __name__ == "__main__":
     args = parse_args()
