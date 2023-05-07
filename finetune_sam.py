@@ -1,4 +1,4 @@
-from generate_finetuning_dataset import load_bbox_coords, load_gt_masks, check_if_finetuning_dataset_exists, show_box, show_mask
+from generate_finetuning_dataset import load_bbox_coords, load_gt_masks, check_if_finetuning_dataset_exists, show_box, show_mask, generate_finetuning_dataset
 from segment_anything import SamPredictor, sam_model_registry
 import configparser
 from collections import defaultdict
@@ -11,7 +11,7 @@ from statistics import mean
 from torch.nn.functional import threshold, normalize
 import numpy as np
 import matplotlib.pyplot as plt
-from toolbox.log import Logger, print_color, sdebug
+from toolbox.log import Logger, print_color, sdebug, warn
 from toolbox.aws import shutdown
 import argparse
 
@@ -45,7 +45,8 @@ FINETUNE_DATA_FOLDER = config["PATHS"]["FINETUNE_DATASET"]
 
 def finetune(class_name: str, lr: float = 1e-4, weight_decay:float = 0.0, num_epochs: int = 100, save_model: bool = True, n_train: int = 10):
     if not check_if_finetuning_dataset_exists():
-        raise Exception("Finetuning dataset does not exist. Please generate it first.")
+        warn("Finetuning dataset not found. Generating it now.")
+        generate_finetuning_dataset()
     
     # Load the dataset
     bbox_coords: dict = load_bbox_coords(class_name=class_name)
