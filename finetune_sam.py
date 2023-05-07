@@ -75,7 +75,7 @@ def finetune(class_name: str, lr: float = 1e-4, weight_decay:float = 0.0, num_ep
 
     # Preprocess data
     transformed_data = defaultdict(dict)
-    for k in tqdm(bbox_coords.keys(), desc="Preprocessing data"):
+    for k in tqdm(bbox_coords.keys()[:n_train], desc="Preprocessing data"):
         img_folder = os.path.join(FINETUNE_DATA_FOLDER, class_name, "images", str(k) + ".png")
         image = cv2.imread(img_folder)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  
@@ -228,7 +228,7 @@ def compare_untrained_and_trained(class_name: str, trained_model, index: int):
     axs[2].axis('off')
 
     img_plt = plt.gcf()
-    image = Image.fromarray(np.uint8(img_plt * 255))
+    image = Image.fromarray(np.uint8(img_plt.get_cmap()(img_plt.get_array())*255))
     image = image.convert('RGB')
     l.log_image(f"Comparison {index}", image)
 
