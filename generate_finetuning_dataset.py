@@ -17,7 +17,7 @@ config = configparser.ConfigParser()
 config.read('config.ini')
 
 CLASSES = ["edge", "boulder", "crack", "rough_patch"]
-DATASET_FOLDER = config["PATHS"]["LABELBOX_DATASET"]
+LABELBOX_DATASET_FOLDER = config["PATHS"]["LABELBOX_DATASET"]
 FINETUNE_DATASET_FOLDER = config["PATHS"]["FINETUNE_DATASET"]
 
 def load_gt_masks(class_name: str) -> dict: # -> Dict[int, Image]:
