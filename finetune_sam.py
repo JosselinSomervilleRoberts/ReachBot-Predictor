@@ -11,33 +11,60 @@ from statistics import mean
 from torch.nn.functional import threshold, normalize
 import numpy as np
 import matplotlib.pyplot as plt
+from toolbox.log import Logger, print_color
+from toolbox.aws import shutdown
+import argparse
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Finetune SAM")
+
+    # For learning
+    parser.add_argument("--class_name", type=str, default="boulder", help="Class to finetune")
+    parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
+    parser.add_argument("--weight_decay", type=float, default=0.0, help="Weight decay")
+    parser.add_argument("--num_epochs", type=int, default=100, help="Number of epochs")
+    parser.add_argument("--save_model", type=bool, default=True, help="Whether to save the model")
+    parser.add_argument("--n_train", type=int, default=200, help="Number of training images")
+    parser.add_argument("--n_test", type=int, default=50, help="Number of test images")
+
+    # For Logger
+    parser.add_argument("--verbose", type=bool, default=True, help="Whether to print to console")
+    parser.add_argument("--save", type=bool, default=True, help="Whether to save to file")
+    parser.add_argument("--save_dir", type=str, default="logs", help="Directory to save logs to")
+    parser.add_argument("--tensorboard", type=bool, default=True, help="Whether to use tensorboard")
+
+    # Usefull for AWS
+    parser.add_argument("--shutdown", type=bool, action="store_true", help="Whether to shutdown the instance after training")
+
+    return parser.parse_args()
+
+l = Logger()
 config = configparser.ConfigParser()
 config.read("config.ini")
 FINETUNE_DATA_FOLDER = config["PATHS"]["FINETUNE_DATASET"]
 
-def finetune(lr: float = 1e-4, weight_decay:float = 0.0, num_epochs: int = 100, batch_size: int = 4, num_workers: int = 4, save_model: bool = True, n_train: int = 10):
+def finetune(class_name: str, lr: float = 1e-4, weight_decay:float = 0.0, num_epochs: int = 100, save_model: bool = True, n_train: int = 10):
     if not check_if_finetuning_dataset_exists():
         raise Exception("Finetuning dataset does not exist. Please generate it first.")
     
     # Load the dataset
-    bbox_coords: dict = load_bbox_coords()
-    ground_truth_masks: dict = load_gt_masks()
+    bbox_coords: dict = load_bbox_coords(class_name=class_name)
+    ground_truth_masks: dict = load_gt_masks(class_name=class_name)
 
     # Load the model
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print("Using device:", device)
+    print_color(f"Using device: {device}", color="bold")
     MODEL_TYPE = config["SAM"]["MODEL_TYPE"]
     MODEL_NAME = config["SAM"]["MODEL_NAME"]
     sam_model = sam_model_registry[MODEL_TYPE](checkpoint=MODEL_NAME)
     sam_model = sam_model.to(device)
     sam_model.train()
-    print("SAM model loaded")
+    print_color("SAM model loaded", color="green")
 
     # Preprocess data
     transformed_data = defaultdict(dict)
     for k in tqdm(bbox_coords.keys(), desc="Preprocessing data"):
-        img_folder = os.path.join(FINETUNE_DATA_FOLDER, "images", str(k) + ".png")
+        img_folder = os.path.join(FINETUNE_DATA_FOLDER, class_name, "images", str(k) + ".png")
         image = cv2.imread(img_folder)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  
         transform = ResizeLongestSide(sam_model.image_encoder.img_size)
@@ -97,8 +124,14 @@ def finetune(lr: float = 1e-4, weight_decay:float = 0.0, num_epochs: int = 100, 
 
             gt_mask_resized = torch.from_numpy(np.resize(ground_truth_masks[k], (1, 1, ground_truth_masks[k].shape[0], ground_truth_masks[k].shape[1]))).to(device)
             gt_binary_mask = torch.as_tensor(gt_mask_resized > 0, dtype=torch.float32)
+
+            # Plot the gt_binary_mask and binary_mask
+            l.log_image("Original image", input_image[0].cpu().detach().numpy())
+            l.log_image("Ground truth mask", gt_binary_mask[0][0].cpu().detach().numpy())
+            l.log_image("Predicted mask", binary_mask[0][0].cpu().detach().numpy())
             
             loss = loss_fn(binary_mask, gt_binary_mask)
+            l.log_value("Loss", loss.item())
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -106,25 +139,13 @@ def finetune(lr: float = 1e-4, weight_decay:float = 0.0, num_epochs: int = 100, 
         losses.append(epoch_losses)
         print(f'EPOCH: {epoch}')
         print(f'Mean loss: {mean(epoch_losses)}')
+        l.log_value("Mean epoch loss", mean(epoch_losses), index=epoch)
 
         if mean(epoch_losses) < best_loss:
             best_loss = mean(epoch_losses)
             if save_model:
-                SAVE_FOLDER = config["PATHS"]["SAVE_MDOEL"]
-                torch.save(sam_model.state_dict(), os.path.join(SAVE_FOLDER, f"save_{MODEL_TYPE}_{MODEL_NAME}_{epoch}.pth"))
+                l.save_model(sam_model, f"{MODEL_TYPE}_{MODEL_NAME}_best.pth")
     return losses, sam_model
-    
-
-def plot_losses(losses: list) -> None:
-    mean_losses = [mean(x) for x in losses]
-    mean_losses
-    plt.plot(list(range(len(mean_losses))), mean_losses)
-    plt.title('Mean epoch loss')
-    plt.xlabel('Epoch Number')
-    plt.ylabel('Loss')
-    SAVE_FOLDER = config["PATHS"]["SAVE_MDOEL"]
-    plt.savefig(os.path.join(SAVE_FOLDER, f'mean_epoch_loss.png'))
-    plt.show()
 
 def compare_untrained_and_trained(trained_model, index: int):
     # Load the model
@@ -169,38 +190,46 @@ def compare_untrained_and_trained(trained_model, index: int):
 
     _, axs = plt.subplots(1, 3, figsize=(30, 12))
 
-
     axs[0].imshow(image)
     show_mask(masks_tuned, axs[0])
     show_box(input_bbox, axs[0])
     axs[0].set_title('Mask with Tuned Model', fontsize=26)
     axs[0].axis('off')
-
+    img = axs[0].get_images()
+    l.log_image("Tuned model", img[0])
 
     axs[1].imshow(image)
     show_mask(masks_orig, axs[1])
     show_box(input_bbox, axs[1])
     axs[1].set_title('Mask with Untuned Model', fontsize=26)
     axs[1].axis('off')
+    img = axs[1].get_images()
+    l.log_image("Untuned model", img[0])
 
     axs[2].imshow(image)
     show_mask(ground_truth_masks[k], axs[2])
     show_box(input_bbox, axs[2])
     axs[2].set_title('Ground Truth Mask', fontsize=26)
     axs[2].axis('off')
-
-    plt.savefig(os.path.join(SAVE_FOLDER, f'comparison_{k}.png'))
-    plt.show()  
+    img = axs[2].get_images()
+    l.log_image("Ground truth", img[0])
 
 if __name__ == "__main__":
-    n_train = 1000
-    losses, trained_model = finetune(num_epochs=10, n_train=n_train)
-    plot_losses(losses)
-    compare_untrained_and_trained(trained_model, index = 12)
-    compare_untrained_and_trained(trained_model, index = 13)
-    compare_untrained_and_trained(trained_model, index = 14)
-    compare_untrained_and_trained(trained_model, index = 15)
-    compare_untrained_and_trained(trained_model, index = 16)
+    args = parse_args()
+    l.verbose = args.verbose
+    l.save = args.save
+    l.save_path = args.save_path
+    l.tensorboard = args.tensorboard
+    losses, trained_model = finetune(args.class_name, args.lr, args.weight_decay, args.num_epochs, args.save_model, args.n_train)
 
-    for index in range(n_train, n_train + 100):
+    # Compare on training data
+    for index in range(min(args.n_train, args.n_test)):
         compare_untrained_and_trained(trained_model, index)
+
+    # Compare on test data
+    for index in range(args.n_train, args.n_train + args.n_test):
+        compare_untrained_and_trained(trained_model, index)
+
+    # Shutdown EC2 instance
+    if args.shutdown:
+        shutdown()
