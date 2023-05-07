@@ -26,6 +26,7 @@ def parse_args():
     parser.add_argument("--save_model", type=bool, default=True, help="Whether to save the model")
     parser.add_argument("--n_train", type=int, default=200, help="Number of training images")
     parser.add_argument("--n_test", type=int, default=50, help="Number of test images")
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=16, help="Number of gradient accumulation steps")
 
     # For Logger
     parser.add_argument("--verbose", type=bool, default=False, help="Whether to print to console")
@@ -43,7 +44,7 @@ config = configparser.ConfigParser()
 config.read("config.ini")
 FINETUNE_DATA_FOLDER = config["PATHS"]["FINETUNE_DATASET"]
 
-def finetune(class_name: str, lr: float = 1e-4, weight_decay:float = 0.0, num_epochs: int = 100, save_model: bool = True, n_train: int = 10):
+def finetune(class_name: str, lr: float = 1e-4, weight_decay:float = 0.0, num_epochs: int = 100, save_model: bool = True, n_train: int = 10, grad_accumulations: int = 1):
     if not check_if_finetuning_dataset_exists():
         warn("Finetuning dataset not found. Generating it now.")
         generate_finetuning_dataset()
@@ -99,6 +100,8 @@ def finetune(class_name: str, lr: float = 1e-4, weight_decay:float = 0.0, num_ep
     losses = []
     best_loss = float('inf')
 
+    loss_of_batch = 0
+    optimizer.zero_grad()
     for epoch in range(num_epochs):
         epoch_losses = []
         # Just train on the first x examples
@@ -142,10 +145,14 @@ def finetune(class_name: str, lr: float = 1e-4, weight_decay:float = 0.0, num_ep
                 l.log_image(f"Predicted mask {k}", binary_mask[0][0])
             
             loss = loss_fn(binary_mask, gt_binary_mask)
-            l.log_value("Loss", loss.item())
-            optimizer.zero_grad()
+            loss_of_batch += loss
             loss.backward()
-            optimizer.step()
+            l.log_value("Loss", loss.item())
+
+            if k % grad_accumulations == 0 or k == keys[n_train - 1]:
+                optimizer.step()
+                optimizer.zero_grad()
+
             epoch_losses.append(loss.item())
         losses.append(epoch_losses)
         print(f'EPOCH: {epoch}')
@@ -228,7 +235,7 @@ def compare_untrained_and_trained(class_name: str, trained_model, index: int):
 if __name__ == "__main__":
     args = parse_args()
     l = Logger(args.verbose, args.save, args.save_path, args.tensorboard)
-    losses, trained_model = finetune(args.class_name, args.lr, args.weight_decay, args.num_epochs, args.save_model, args.n_train)
+    losses, trained_model = finetune(args.class_name, args.lr, args.weight_decay, args.num_epochs, args.save_model, args.n_train, args.gradient_accumulation_steps)
 
     # Compare on training data
     for index in range(min(args.n_train, args.n_test)):
