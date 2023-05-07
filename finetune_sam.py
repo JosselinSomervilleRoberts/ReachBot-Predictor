@@ -28,8 +28,8 @@ def parse_args():
     parser.add_argument("--n_test", type=int, default=50, help="Number of test images")
 
     # For Logger
-    parser.add_argument("--verbose", type=bool, default=True, help="Whether to print to console")
-    parser.add_argument("--save", type=bool, default=True, help="Whether to save to file")
+    parser.add_argument("--verbose", type=bool, default=False, help="Whether to print to console")
+    parser.add_argument("--save", type=bool, default=False, help="Whether to save to file")
     parser.add_argument("--save_path", type=str, default="logs", help="Directory to save logs to")
     parser.add_argument("--tensorboard", type=bool, default=True, help="Whether to use tensorboard")
 
@@ -135,9 +135,10 @@ def finetune(class_name: str, lr: float = 1e-4, weight_decay:float = 0.0, num_ep
             gt_binary_mask = torch.as_tensor(gt_mask_resized > 0, dtype=torch.float32)
 
             # Plot the gt_binary_mask and binary_mask
-            l.log_image("Original image", input_image[0].cpu().detach().numpy())
-            l.log_image("Ground truth mask", gt_binary_mask[0][0].cpu().detach().numpy())
-            l.log_image("Predicted mask", binary_mask[0][0].cpu().detach().numpy())
+            if k % 100 == 0:
+                l.log_image("Input image {k}", input_image[0])
+                l.log_image("Ground truth mask {k}", gt_binary_mask[0][0])
+                l.log_image("Predicted mask {k}", binary_mask[0][0])
             
             loss = loss_fn(binary_mask, gt_binary_mask)
             l.log_value("Loss", loss.item())
@@ -156,7 +157,7 @@ def finetune(class_name: str, lr: float = 1e-4, weight_decay:float = 0.0, num_ep
                 l.save_model(sam_model, f"{MODEL_TYPE}_{MODEL_NAME}_best.pth")
     return losses, sam_model
 
-def compare_untrained_and_trained(trained_model, index: int):
+def compare_untrained_and_trained(class_name: str, trained_model, index: int):
     # Load the model
     device = "cuda" if torch.cuda.is_available() else "cpu"
     MODEL_TYPE = config["SAM"]["MODEL_TYPE"]
@@ -170,13 +171,13 @@ def compare_untrained_and_trained(trained_model, index: int):
     predictor_original = SamPredictor(sam_model_orig)
 
     # Load data
-    bbox_coords: dict = load_bbox_coords()
-    ground_truth_masks: dict = load_gt_masks()
+    bbox_coords: dict = load_bbox_coords(class_name)
+    ground_truth_masks: dict = load_gt_masks(class_name)
     keys = list(bbox_coords.keys())
 
     # Display result on new data
     k = keys[index]
-    img_folder = os.path.join(FINETUNE_DATA_FOLDER, "images", str(k) + ".png")
+    img_folder = os.path.join(FINETUNE_DATA_FOLDER, class_name, "images", str(k) + ".png")
     image = cv2.imread(img_folder)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
@@ -230,11 +231,11 @@ if __name__ == "__main__":
 
     # Compare on training data
     for index in range(min(args.n_train, args.n_test)):
-        compare_untrained_and_trained(trained_model, index)
+        compare_untrained_and_trained(args.class_name, trained_model, index)
 
     # Compare on test data
     for index in range(args.n_train, args.n_train + args.n_test):
-        compare_untrained_and_trained(trained_model, index)
+        compare_untrained_and_trained(args.class_name, trained_model, index)
 
     # Shutdown EC2 instance
     if args.shutdown:
