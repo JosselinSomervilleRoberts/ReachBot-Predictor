@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument("--tensorboard", type=bool, default=True, help="Whether to use tensorboard")
 
     # Usefull for AWS
-    parser.add_argument("--shutdown", type=bool, action="store_true", help="Whether to shutdown the instance after training")
+    parser.add_argument("--shutdown", action="store_true", help="Whether to shutdown the instance after training")
 
     return parser.parse_args()
 
