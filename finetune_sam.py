@@ -38,7 +38,7 @@ def parse_args():
 
     return parser.parse_args()
 
-l = Logger()
+l = None
 config = configparser.ConfigParser()
 config.read("config.ini")
 FINETUNE_DATA_FOLDER = config["PATHS"]["FINETUNE_DATASET"]
@@ -216,10 +216,7 @@ def compare_untrained_and_trained(trained_model, index: int):
 
 if __name__ == "__main__":
     args = parse_args()
-    l.verbose = args.verbose
-    l.save = args.save
-    l.save_path = args.save_path
-    l.tensorboard = args.tensorboard
+    l = Logger(args.verbose, args.save, args.save_path, args.tensorboard)
     sdebug(args)
     losses, trained_model = finetune(args.class_name, args.lr, args.weight_decay, args.num_epochs, args.save_model, args.n_train)
 
