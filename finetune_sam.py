@@ -30,7 +30,7 @@ def parse_args():
     # For Logger
     parser.add_argument("--verbose", type=bool, default=True, help="Whether to print to console")
     parser.add_argument("--save", type=bool, default=True, help="Whether to save to file")
-    parser.add_argument("--save_dir", type=str, default="logs", help="Directory to save logs to")
+    parser.add_argument("--save_path", type=str, default="logs", help="Directory to save logs to")
     parser.add_argument("--tensorboard", type=bool, default=True, help="Whether to use tensorboard")
 
     # Usefull for AWS
