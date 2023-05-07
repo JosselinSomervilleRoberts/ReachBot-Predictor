@@ -56,6 +56,15 @@ def finetune(class_name: str, lr: float = 1e-4, weight_decay:float = 0.0, num_ep
     print_color(f"Using device: {device}", color="bold")
     MODEL_TYPE = config["SAM"]["MODEL_TYPE"]
     MODEL_NAME = config["SAM"]["MODEL_NAME"]
+    # Check if checkpoints is already downloaded
+    if not os.path.exists(MODEL_NAME):
+        print_color("Downloading SAM model", color="yellow")
+        try:
+            os.system(f"wget https://dl.fbaipublicfiles.com/segment_anything/{MODEL_NAME}")
+        except Exception as e:
+            raise Exception(f"Failed to download SAM model. Please check your internet connection or SAM model name. Error: {e}")
+    else:
+        print_color("SAM model already downloaded", color="green")
     sam_model = sam_model_registry[MODEL_TYPE](checkpoint=MODEL_NAME)
     sam_model = sam_model.to(device)
     sam_model.train()
@@ -217,7 +226,6 @@ def compare_untrained_and_trained(trained_model, index: int):
 if __name__ == "__main__":
     args = parse_args()
     l = Logger(args.verbose, args.save, args.save_path, args.tensorboard)
-    sdebug(args)
     losses, trained_model = finetune(args.class_name, args.lr, args.weight_decay, args.num_epochs, args.save_model, args.n_train)
 
     # Compare on training data
