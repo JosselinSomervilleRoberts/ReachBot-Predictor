@@ -20,7 +20,7 @@ def parse_args():
 
     # For learning
     parser.add_argument("--class_name", type=str, default="boulder", help="Class to finetune")
-    parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
+    parser.add_argument("--lr", type=float, default=1e-5, help="Learning rate")
     parser.add_argument("--weight_decay", type=float, default=0.0, help="Weight decay")
     parser.add_argument("--num_epochs", type=int, default=100, help="Number of epochs")
     parser.add_argument("--save_model", type=bool, default=True, help="Whether to save the model")
@@ -137,9 +137,9 @@ def finetune(class_name: str, lr: float = 1e-4, weight_decay:float = 0.0, num_ep
 
             # Plot the gt_binary_mask and binary_mask
             if k % 100 == 0:
-                l.log_image("Input image {k}", input_image[0])
-                l.log_image("Ground truth mask {k}", gt_binary_mask[0][0])
-                l.log_image("Predicted mask {k}", binary_mask[0][0])
+                l.log_image(f"Input image {k}", input_image[0])
+                l.log_image(f"Ground truth mask {k}", gt_binary_mask[0][0])
+                l.log_image(f"Predicted mask {k}", binary_mask[0][0])
             
             loss = loss_fn(binary_mask, gt_binary_mask)
             l.log_value("Loss", loss.item())
