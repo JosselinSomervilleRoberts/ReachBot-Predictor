@@ -75,7 +75,8 @@ def finetune(class_name: str, lr: float = 1e-4, weight_decay:float = 0.0, num_ep
 
     # Preprocess data
     transformed_data = defaultdict(dict)
-    for k in tqdm(bbox_coords.keys()[:n_train], desc="Preprocessing data"):
+    keys = list(bbox_coords.keys())
+    for k in tqdm(keys[:n_train], desc="Preprocessing data"):
         img_folder = os.path.join(FINETUNE_DATA_FOLDER, class_name, "images", str(k) + ".png")
         image = cv2.imread(img_folder)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  
@@ -96,7 +97,6 @@ def finetune(class_name: str, lr: float = 1e-4, weight_decay:float = 0.0, num_ep
     optimizer = torch.optim.Adam(sam_model.mask_decoder.parameters(), lr=lr, weight_decay=weight_decay)
     loss_fn = torch.nn.MSELoss()
     # loss_fn = torch.nn.BCELoss()
-    keys = list(bbox_coords.keys())
 
     losses = []
     best_loss = float('inf')
