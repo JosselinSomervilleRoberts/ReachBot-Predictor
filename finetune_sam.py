@@ -22,7 +22,7 @@ def parse_args():
 
     # For learning
     parser.add_argument("--class_name", type=str, default="boulder", help="Class to finetune")
-    parser.add_argument("--lr", type=float, default=1e-5, help="Learning rate")
+    parser.add_argument("--lr", type=float, default=1e-6, help="Learning rate")
     parser.add_argument("--weight_decay", type=float, default=0.0, help="Weight decay")
     parser.add_argument("--num_epochs", type=int, default=100, help="Number of epochs")
     parser.add_argument("--save_model", type=bool, default=True, help="Whether to save the model")
@@ -106,8 +106,11 @@ def finetune(class_name: str, lr: float = 1e-4, weight_decay:float = 0.0, num_ep
     optimizer.zero_grad()
     for epoch in range(num_epochs):
         epoch_losses = []
-        # Just train on the first x examples
-        for k in tqdm(keys[:n_train]):
+        # Just train on the first n_train images (random order)
+        order = np.random.permutation(n_train)
+
+        for i in tqdm(range(n_train), desc=f"Epoch {epoch}"):
+            k = keys[order[i]]
             input_image = transformed_data[k]['image'].to(device)
             input_size = transformed_data[k]['input_size']
             original_image_size = transformed_data[k]['original_image_size']
@@ -213,19 +216,19 @@ def compare_untrained_and_trained(class_name: str, trained_model, index: int):
     axs[0].imshow(image)
     show_mask(masks_tuned, axs[0])
     show_box(input_bbox, axs[0])
-    axs[0].set_title('Mask with Tuned Model', fontsize=26)
+    axs[0].set_title('Tuned Model', fontsize=26)
     axs[0].axis('off')
 
     axs[1].imshow(image)
     show_mask(masks_orig, axs[1])
     show_box(input_bbox, axs[1])
-    axs[1].set_title('Mask with Untuned Model', fontsize=26)
+    axs[1].set_title('Untuned Model', fontsize=26)
     axs[1].axis('off')
 
     axs[2].imshow(image)
     show_mask(ground_truth_masks[k], axs[2])
     show_box(input_bbox, axs[2])
-    axs[2].set_title('Ground Truth Mask', fontsize=26)
+    axs[2].set_title('Ground Truth', fontsize=26)
     axs[2].axis('off')
 
     img_buf = io.BytesIO()
