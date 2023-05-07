@@ -7,9 +7,10 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import configparser
-from generate_dataset import check_if_dataset_exists
+from generate_labelbox_dataset import check_if_labelbox_dataset_exists, generate_labelbox_dataset
 from skimage.morphology import label
 from typing import List
+from toolbox.printing import warn
 
 # config
 config = configparser.ConfigParser()
@@ -17,12 +18,12 @@ config.read('config.ini')
 
 CLASSES = ["edge", "boulder", "crack", "rough_patch"]
 DATASET_FOLDER = config["PATHS"]["LABELBOX_DATASET"]
-OUTPUT_FOLDER = config["PATHS"]["FINETUNE_DATASET"]
+FINETUNE_DATASET_FOLDER = config["PATHS"]["FINETUNE_DATASET"]
 
 def load_gt_masks(class_name: str) -> dict: # -> Dict[int, Image]:
-    """Loads the ground truth masks from the OUTPUT_FOLDER folder."""
+    """Loads the ground truth masks from the FINETUNE_DATASET_FOLDER folder."""
     ground_truth_masks = {}
-    masks_path = os.path.join(OUTPUT_FOLDER, class_name, "masks")
+    masks_path = os.path.join(FINETUNE_DATASET_FOLDER, class_name, "masks")
     for k in range(len(os.listdir(masks_path))):
         mask_path = os.path.join(masks_path, str(k) + ".png")
         gt_grayscale = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
@@ -30,9 +31,9 @@ def load_gt_masks(class_name: str) -> dict: # -> Dict[int, Image]:
     return ground_truth_masks
 
 def load_bbox_coords(class_name: str) -> List[np.ndarray]:
-    """Loads the bounding box coordinates from the OUTPUT_FOLDER folder."""
+    """Loads the bounding box coordinates from the FINETUNE_DATASET_FOLDER folder."""
     bbox_coords = {}
-    bboxes_path = os.path.join(OUTPUT_FOLDER, class_name, "bboxes")
+    bboxes_path = os.path.join(FINETUNE_DATASET_FOLDER, class_name, "bboxes")
     for k in range(len(os.listdir(bboxes_path))):
         bbox_path = os.path.join(bboxes_path, str(k) + ".txt")
         with open(bbox_path, "r") as f:
@@ -55,7 +56,7 @@ def show_box(box: np.ndarray, ax: plt.Axes) -> None:
     ax.add_patch(plt.Rectangle((x0, y0), w, h, edgecolor='green', facecolor=(0,0,0,0), lw=2))
 
 def show_image_with_mask(class_name: str, image_number: int, bbox_coords: List[np.ndarray], ground_truth_masks: dict) -> None:
-    image = cv2.imread(f"{OUTPUT_FOLDER}/{class_name}/images/{image_number}.png")
+    image = cv2.imread(f"{FINETUNE_DATASET_FOLDER}/{class_name}/images/{image_number}.png")
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     plt.figure(figsize=(10,10))
     plt.imshow(image)
@@ -90,7 +91,7 @@ def mask_to_bbox(mask: Image) -> np.ndarray:
 
 def check_if_finetuning_dataset_exists() -> bool:
     """Checks if the finetuning dataset exists."""
-    return os.path.exists(OUTPUT_FOLDER)
+    return os.path.exists(FINETUNE_DATASET_FOLDER)
 
 def separate_masks(mask: Image) -> List[np.ndarray]:
     """If they are several convex components in the mask, separate them into individual masks."""
@@ -108,21 +109,22 @@ def generate_finetuning_dataset() -> None:
     """Generates the finetuning dataset from the dataset folder."""
 
     # Check if the dataset folder exists
-    if not check_if_dataset_exists():
-        raise Exception("Dataset folder not found. Please run generate_dataset.py first.")
+    if not check_if_labelbox_dataset_exists():
+        warn("The dataset folder does not exist. It will be generated now.")
+        generate_labelbox_dataset()
 
     # Get the number of images in the dataset
-    num_images = len(os.listdir(DATASET_FOLDER))
+    num_images = len(os.listdir(LABELBOX_DATASET_FOLDER))
     print(f"Found {num_images} images")
 
     # Create the output folder
-    if not os.path.exists(OUTPUT_FOLDER):
-        os.mkdir(OUTPUT_FOLDER)
+    if not os.path.exists(FINETUNE_DATASET_FOLDER):
+        os.mkdir(FINETUNE_DATASET_FOLDER)
         for class_mask in CLASSES:
-            os.mkdir(os.path.join(OUTPUT_FOLDER, class_mask))
-            os.mkdir(os.path.join(OUTPUT_FOLDER, class_mask, "images"))
-            os.mkdir(os.path.join(OUTPUT_FOLDER, class_mask, "masks"))
-            os.mkdir(os.path.join(OUTPUT_FOLDER, class_mask, "bboxes"))
+            os.mkdir(os.path.join(FINETUNE_DATASET_FOLDER, class_mask))
+            os.mkdir(os.path.join(FINETUNE_DATASET_FOLDER, class_mask, "images"))
+            os.mkdir(os.path.join(FINETUNE_DATASET_FOLDER, class_mask, "masks"))
+            os.mkdir(os.path.join(FINETUNE_DATASET_FOLDER, class_mask, "bboxes"))
 
     # For each image folder, open classes.txt and get the classes
     # For each line (i.e. mask) in classes.txt, load the mask if the class is in CLASSES
@@ -131,7 +133,7 @@ def generate_finetuning_dataset() -> None:
     # It if generated with some noise and padding
 
     # The final architecture of the dataset folder is:
-    # <OUTPUT_FOLDER/class_name>
+    # <FINETUNE_DATASET_FOLDER/class_name>
     # ├── images
     # │   ├── 0.png
     # │   ├── 1.png
@@ -155,7 +157,7 @@ def generate_finetuning_dataset() -> None:
         num_masks_failed[class_mask] = 0
 
     for i in tqdm(range(num_images)):
-        img_folder = os.path.join(DATASET_FOLDER, str(i))
+        img_folder = os.path.join(LABELBOX_DATASET_FOLDER, str(i))
         classes_file = os.path.join(img_folder, "classes.txt")
 
         # Get the classes
@@ -178,7 +180,7 @@ def generate_finetuning_dataset() -> None:
                         print(f"Found 0 masks in image {i} mask {j}")
                         continue
 
-                    folder = os.path.join(OUTPUT_FOLDER, class_mask)
+                    folder = os.path.join(FINETUNE_DATASET_FOLDER, class_mask)
                     for mask in masks:
                         # Convert mask from np.ndarray to Image
                         mask = Image.fromarray(mask.astype(np.uint8) * 255)

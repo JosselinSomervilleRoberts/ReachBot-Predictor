@@ -8,11 +8,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 from typing import List
+from toolbox.printing import warn, ldebug
 
 # config
 config = configparser.ConfigParser()
 config.read('config.ini')
-DATASET_FOLDER = config["PATHS"]["LABELBOX_DATASET"]
+LABELBOX_DATASET_FOLDER = config["PATHS"]["LABELBOX_DATASET"]
 LB_API_KEY = config['SECRETS']['LABELBOX_API_KEY']
 LB_PROJECT_ID = config['SECRETS']['LABELBOX_PROJECT_ID']
 CLASS_TO_COLOR = {
@@ -22,14 +23,14 @@ CLASS_TO_COLOR = {
         "rough_patch": [int(c) for c in config["DISPLAY"]["COLOR_ROUGH_PATCH"].split(' ')],
     }
 
-def check_if_dataset_exists() -> bool:
+def check_if_labelbox_dataset_exists() -> bool:
     """Checks if the dataset already exists."""
-    return os.path.exists(DATASET_FOLDER)
+    return os.path.exists(LABELBOX_DATASET_FOLDER)
 
 def get_masks(image_number: int) -> list:
     """Gets the masks for a given image number."""
     masks = []
-    img_folder = os.path.join(DATASET_FOLDER, str(image_number))
+    img_folder = os.path.join(LABELBOX_DATASET_FOLDER, str(image_number))
     for mask_path in os.listdir(img_folder):
         if mask_path.endswith(".png") and mask_path.startswith("mask"):
             mask = Image.open(os.path.join(img_folder, mask_path))
@@ -39,12 +40,12 @@ def get_masks(image_number: int) -> list:
 def get_classes(image_number: int) -> List[str]:
     """Gets the classes for a given image number."""
     classes = []
-    img_folder = os.path.join(DATASET_FOLDER, str(image_number))
+    img_folder = os.path.join(LABELBOX_DATASET_FOLDER, str(image_number))
     with open(os.path.join(img_folder, "classes.txt"), "r") as f:
         classes = f.read().split("\n")
     return classes
 
-def generate_labelbox_dataset() -> None:
+def generate_labelbox_dataset(max_try: int = 10) -> None:
     import labelbox
 
     # Get the labelbox project
@@ -58,8 +59,8 @@ def generate_labelbox_dataset() -> None:
 
     # Create folder name "dataset" if it doesn't exist
     import os
-    if not os.path.exists(DATASET_FOLDER):
-        os.makedirs(DATASET_FOLDER)
+    if not os.path.exists(LABELBOX_DATASET_FOLDER):
+        os.makedirs(LABELBOX_DATASET_FOLDER)
 
     # Download all images and save them in the "dataset" folder
     print("Downloading images...")
@@ -69,7 +70,7 @@ def generate_labelbox_dataset() -> None:
         img = Image.open(BytesIO(response.content))
 
         # Create folder named i if it doesn't exist
-        img_folder = os.path.join(DATASET_FOLDER, str(i))
+        img_folder = os.path.join(LABELBOX_DATASET_FOLDER, str(i))
         if not os.path.exists(img_folder):
             os.makedirs(img_folder)
         else:
@@ -84,12 +85,27 @@ def generate_labelbox_dataset() -> None:
         objects = labels[i]['Label']['objects']
         for j, object in enumerate(objects):
             instanceURI = object['instanceURI']
-            response = requests.get(instanceURI)
-            img = Image.open(BytesIO(response.content))
-            img = Image.eval(img, lambda a: 255 - a)
-            img.putalpha(255)
-            img.save(img_folder + "/mask_" + str(j) + ".png")
-            classes.append(objects[j]['title'])
+            idx_try = 0
+            response_code = 0
+            response = None
+            while response_code != 200 and idx_try < max_try:
+                try:
+                    idx_try += 1
+                    response = requests.get(instanceURI)
+                    response_code = response.status_code
+                    if response_code == 200:
+                        img = Image.open(BytesIO(response.content))
+                        img = Image.eval(img, lambda a: 255 - a)
+                        img.putalpha(255)
+                        img.save(img_folder + "/mask_" + str(j) + ".png")
+                        classes.append(objects[j]['title'])
+                    else:
+                        warn(f"Response code {response_code} for image {i}, try {idx_try}")
+                        ldebug(response)
+                except Exception as e:
+                    warn(f"Exception {e} for image {i}, try {idx_try}")
+                    ldebug(response)
+
 
         # Save classes
         with open(img_folder + "/classes.txt", "w") as f:
@@ -99,7 +115,7 @@ def generate_labelbox_dataset() -> None:
 def show_img_with_all_masks(image_number: int) -> None:
     """Shows the image with all the masks on top of it."""
     # Load the image
-    img_folder = os.path.join(DATASET_FOLDER, str(image_number))
+    img_folder = os.path.join(LABELBOX_DATASET_FOLDER, str(image_number))
     img = cv2.imread(img_folder + "/image.png")
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 

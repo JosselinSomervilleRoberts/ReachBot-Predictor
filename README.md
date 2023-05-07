@@ -22,5 +22,5 @@ else:
 ```
 Then you can generate the datasets by doing:
 1. Create a `config.ini` file: `cp config.example.ini config.ini` and fill `LABELBOX_API_KEY` and `LABELBOX_PROJECT_ID` with your own values.
-2. Run `python generate_dataset.py` to download the dataset from Labelbox and generate the `datasets/labelbox` folder.
+2. Run `python generate_labelbox_dataset.py` to download the dataset from Labelbox and generate the `datasets/labelbox` folder.
 3. Run `python generate_finetuning_dataset.py` to generate the `datasets/finetune` folder *(ready to be used for finetuning)*.
