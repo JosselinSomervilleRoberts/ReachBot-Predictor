@@ -1,8 +1,10 @@
 # Custom ignores
 *.pth
-dataset/
+datasets/
 saved_models/
 config.ini
+.vscode/
+**/*.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
