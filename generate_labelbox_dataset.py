@@ -142,7 +142,7 @@ def show_img_with_all_masks(image_number: int) -> None:
 
 
 if __name__ == "__main__":
-    if not check_if_dataset_exists():
+    if not check_if_labelbox_dataset_exists():
         print("Dataset does not exist")
         generate_labelbox_dataset()
     else:
