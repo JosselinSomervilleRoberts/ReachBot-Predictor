@@ -5,6 +5,9 @@ saved_models/
 config.ini
 .vscode/
 **/*.ipynb
+wandb/
+vit-cracks/
+resnet-cracks/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
