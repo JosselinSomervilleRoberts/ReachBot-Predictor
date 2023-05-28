@@ -4,10 +4,9 @@ datasets/
 saved_models/
 config.ini
 .vscode/
-**/*.ipynb
+# **/*.ipynb
 wandb/
-vit-cracks/
-resnet-cracks/
+*-cracks/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
