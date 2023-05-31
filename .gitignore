@@ -4,6 +4,12 @@ datasets/
 saved_models/
 config.ini
 .vscode/
+logs/
+models/
+results/
+PennFudanPed/
+wandb/
+vision/
 # **/*.ipynb
 wandb/
 *-cracks/
