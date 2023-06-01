@@ -10,6 +10,7 @@ results/
 PennFudanPed/
 wandb/
 vision/
+PennFudanPed_Test/
 # **/*.ipynb
 wandb/
 *-cracks/
