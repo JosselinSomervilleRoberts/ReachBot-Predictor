@@ -1,6 +1,7 @@
 # Custom ignores
 *.pth
 datasets/
+!mmselfsup/mmselfsup/datasets/
 saved_models/
 config.ini
 .vscode/
