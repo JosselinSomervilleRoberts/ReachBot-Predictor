@@ -362,7 +362,7 @@ def evaluate_hyper(model, data_loader, device):
 def hyperparameter_tuning_1(num_epochs_list, learning_rates):
     # from toolbox.aws import shutdown
 
-    batch_size = 4
+    batch_size = 2
 
     # get the data loaders
     _, _, data_loader, data_loader_test = datasets_and_dataloaders(batch_size)
