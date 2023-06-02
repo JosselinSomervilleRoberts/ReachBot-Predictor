@@ -126,4 +126,14 @@ train_cfg = dict(type="EpochBasedTrainLoop", max_epochs=100)
 
 # runtime settings
 # only keeps the latest 3 checkpoints
-default_hooks = dict(checkpoint=dict(max_keep_ckpts=3))
+default_hooks = dict(
+    checkpoint=dict(max_keep_ckpts=3),
+    logger=dict(type="LoggerHook", interval=100),
+)
+visualizer = dict(
+    type="SelfSupVisualizer",
+    vis_backends=[
+        dict(type="LocalVisBackend", name="selfsup_local"),
+        dict(type="WandbVisBackend", name="selfsup"),
+    ],
+)

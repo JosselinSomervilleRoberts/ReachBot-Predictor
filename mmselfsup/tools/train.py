@@ -2,49 +2,55 @@
 import argparse
 import os
 import os.path as osp
+import time
 
 from mmengine.config import Config, DictAction
 from mmengine.runner import Runner
+from toolbox import aws
+
+import wandb
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Train a model')
-    parser.add_argument('config', help='train config file path')
-    parser.add_argument('--work-dir', help='the dir to save logs and models')
+    parser = argparse.ArgumentParser(description="Train a model")
+    parser.add_argument("config", help="train config file path")
+    parser.add_argument("--work-dir", help="the dir to save logs and models")
     parser.add_argument(
-        '--resume',
-        nargs='?',
+        "--resume",
+        nargs="?",
         type=str,
-        const='auto',
-        help='If specify checkpint path, resume from it, while if not '
-        'specify, try to auto resume from the latest checkpoint '
-        'in the work directory.')
+        const="auto",
+        help="If specify checkpint path, resume from it, while if not "
+        "specify, try to auto resume from the latest checkpoint "
+        "in the work directory.",
+    )
     parser.add_argument(
-        '--amp',
-        action='store_true',
-        help='enable automatic-mixed-precision training')
+        "--amp", action="store_true", help="enable automatic-mixed-precision training"
+    )
     parser.add_argument(
-        '--cfg-options',
-        nargs='+',
+        "--cfg-options",
+        nargs="+",
         action=DictAction,
-        help='override some settings in the used config, the key-value pair '
-        'in xxx=yyy format will be merged into config file. If the value to '
+        help="override some settings in the used config, the key-value pair "
+        "in xxx=yyy format will be merged into config file. If the value to "
         'be overwritten is a list, it should be like key="[a,b]" or key=a,b '
         'It also allows nested list/tuple values, e.g. key="[(a,b),(c,d)]" '
-        'Note that the quotation marks are necessary and that no white space '
-        'is allowed.')
+        "Note that the quotation marks are necessary and that no white space "
+        "is allowed.",
+    )
     parser.add_argument(
-        '--launcher',
-        choices=['none', 'pytorch', 'slurm', 'mpi'],
-        default='none',
-        help='job launcher')
+        "--launcher",
+        choices=["none", "pytorch", "slurm", "mpi"],
+        default="none",
+        help="job launcher",
+    )
     # When using PyTorch version >= 2.0.0, the `torch.distributed.launch`
     # will pass the `--local-rank` parameter to `tools/train.py` instead
     # of `--local_rank`.
-    parser.add_argument('--local_rank', '--local-rank', type=int, default=0)
+    parser.add_argument("--local_rank", "--local-rank", type=int, default=0)
     args = parser.parse_args()
-    if 'LOCAL_RANK' not in os.environ:
-        os.environ['LOCAL_RANK'] = str(args.local_rank)
+    if "LOCAL_RANK" not in os.environ:
+        os.environ["LOCAL_RANK"] = str(args.local_rank)
 
     return args
 
@@ -62,23 +68,25 @@ def main():
     if args.work_dir is not None:
         # update configs according to CLI args if args.work_dir is not None
         cfg.work_dir = args.work_dir
-    elif cfg.get('work_dir', None) is None:
+    elif cfg.get("work_dir", None) is None:
         # use config filename as default work_dir if cfg.work_dir is None
-        work_type = args.config.split('/')[1]
-        cfg.work_dir = osp.join('./work_dirs', work_type,
-                                osp.splitext(osp.basename(args.config))[0])
+        work_type = args.config.split("/")[1]
+        cfg.work_dir = osp.join(
+            "./work_dirs", work_type, osp.splitext(osp.basename(args.config))[0]
+        )
 
     # enable automatic-mixed-precision training
     if args.amp is True:
-        optim_wrapper = cfg.optim_wrapper.get('type', 'OptimWrapper')
-        assert optim_wrapper in ['OptimWrapper', 'AmpOptimWrapper'], \
-            '`--amp` is not supported custom optimizer wrapper type ' \
-            f'`{optim_wrapper}.'
-        cfg.optim_wrapper.type = 'AmpOptimWrapper'
-        cfg.optim_wrapper.setdefault('loss_scale', 'dynamic')
+        optim_wrapper = cfg.optim_wrapper.get("type", "OptimWrapper")
+        assert optim_wrapper in ["OptimWrapper", "AmpOptimWrapper"], (
+            "`--amp` is not supported custom optimizer wrapper type "
+            f"`{optim_wrapper}."
+        )
+        cfg.optim_wrapper.type = "AmpOptimWrapper"
+        cfg.optim_wrapper.setdefault("loss_scale", "dynamic")
 
     # resume training
-    if args.resume == 'auto':
+    if args.resume == "auto":
         cfg.resume = True
         cfg.load_from = None
     elif args.resume is not None:
@@ -92,5 +100,11 @@ def main():
     runner.train()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+    start_time = time.time()
     main()
+    end_time = time.time()
+    if (end_time - start_time) > 60 * 5:
+        aws.shutdown()
+    else:
+        print("Training time is less than 5 minutes, not shutdown")
