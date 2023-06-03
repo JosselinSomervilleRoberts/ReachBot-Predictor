@@ -26,12 +26,13 @@ def get_images_paths():
         glob.glob(os.path.join(SELFSUP_SOURCE_DATASET_FOLDER, "*.jpg"))
         + glob.glob(os.path.join(SELFSUP_SOURCE_DATASET_FOLDER, "*.png"))
         + glob.glob(os.path.join(SELFSUP_SOURCE_DATASET_FOLDER, "*.JPG"))
+        + glob.glob(os.path.join(SELFSUP_SOURCE_DATASET_FOLDER, "*.jpeg"))
     )
     return images_paths
 
 
 if __name__ == "__main__":
-    if not os.path.exists(SELFSUP_DATASET_FOLDER, "images"):
+    if not os.path.exists(os.path.join(SELFSUP_DATASET_FOLDER, "images")):
         os.makedirs(os.path.join(SELFSUP_DATASET_FOLDER, "images"))
 
     patch_size = 256

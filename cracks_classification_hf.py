@@ -39,18 +39,18 @@ def compute_metrics(p):
 
 
 if __name__ == "__main__":
-    model_type = "convnext"
+    model_type = "resnet"
 
     if model_type == "resnet":
-        output_dir = "./resnet-cracks"
+        output_dir = "./classification_models/resnet-cracks"
     elif model_type == "vit":
-        output_dir = "./vit-cracks"
+        output_dir = "./classification_models/vit-cracks"
     elif model_type == "swin":
-        output_dir = "./swin-cracks"
+        output_dir = "./classification_models/swin-cracks"
     elif model_type == "beit":
-        output_dir = "./beit-cracks"
+        output_dir = "./classification_models/beit-cracks"
     elif model_type == "convnext":
-        output_dir = "./convnext-cracks"
+        output_dir = "./classification_models/convnext-cracks"
 
     dataset = load_dataset("imagefolder", data_dir="datasets/cracks_classification")
     labels = dataset["train"].features["label"].names
