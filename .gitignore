@@ -1,6 +1,7 @@
 # Custom ignores
 *.pth
 datasets/
+!mmselfsup/mmselfsup/datasets/
 saved_models/
 config.ini
 .vscode/
@@ -13,7 +14,7 @@ vision/
 PennFudanPed_Test/
 # **/*.ipynb
 wandb/
-*-cracks/
+classification_models/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
