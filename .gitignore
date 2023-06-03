@@ -8,6 +8,8 @@ config.ini
 # **/*.ipynb
 wandb/
 classification_models/
+PennFudanPed_Test/
+models/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
