@@ -230,12 +230,29 @@ def generate_positive_samples(output_size=128, max_size=128, min_size=32):
     class_name = "crack"
     gt_masks = load_gt_masks(class_name)
     nb_positive_samples = 0
-    for image_number in tqdm(range(len(gt_masks))):
-        image = cv2.imread(
-            f"{FINETUNE_DATASET_FOLDER}/{class_name}/images/{image_number}.png"
-        )
+    curr_image = None
+    curr_total_mask = None
+    for k, image_path in enumerate(
+        tqdm(sorted(glob.glob(f"{FINETUNE_DATASET_FOLDER}/{class_name}/images/*.png")))
+    ):
+        image_number = image_path.split("/")[-1].split("_")[0]
+        if image_number != curr_image:
+            curr_image = image_number
+            total_mask_curr_image = len(
+                glob.glob(
+                    f"{FINETUNE_DATASET_FOLDER}/{class_name}/images/{curr_image}_*.png"
+                )
+            )
+            curr_total_mask = sum(
+                [
+                    gt_masks[k + i].astype(np.uint8) * 255
+                    for i in range(total_mask_curr_image)
+                ]
+            )
+
+        image = cv2.imread(image_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        mask = gt_masks[image_number]
+        mask = gt_masks[k]
         bboxes = get_bboxes_for_mask(mask, max_size=max_size)
         square_bboxes = get_square_bboxes(bboxes, mask, min_size=min_size)
         mask_boxes = mask.copy().astype(np.uint8) * 255
@@ -254,7 +271,19 @@ def generate_positive_samples(output_size=128, max_size=128, min_size=32):
                 ),
                 image_resized,
             )
+            mask_cropped = curr_total_mask[bbox[1] : bbox[3], bbox[0] : bbox[2]]
+            mask_resized = cv2.resize(mask_cropped, (output_size, output_size))
+            cv2.imwrite(
+                os.path.join(
+                    CRACKS_DATASET_FOLDER,
+                    "train",
+                    "masks",
+                    f"{nb_positive_samples}.png",
+                ),
+                mask_resized,
+            )
             nb_positive_samples += 1
+
         cv2.imwrite(
             os.path.join(
                 CRACKS_DATASET_FOLDER,
@@ -278,6 +307,26 @@ def find_negative_samples(mask, mask_size, max_attempts=10):
         nb_attempts += 1
 
     return None, None
+
+
+def pure_pil_alpha_to_color_v2(image, color=(255, 255, 255)):
+    """Alpha composite an RGBA Image with a specified color.
+
+    Simpler, faster version than the solutions above.
+
+    Source: http://stackoverflow.com/a/9459208/284318
+
+    Keyword Arguments:
+    image -- PIL RGBA Image object
+    color -- Tuple r, g, b (default 255, 255, 255)
+
+    """
+    image.load()  # needed for split()
+    background = Image.new("RGB", image.size, color)
+    if len(image.split()) == 4:
+        background.paste(image, mask=image.split()[3])  # 3 is the alpha channel
+        return background
+    return image
 
 
 def generate_negative_samples(max_samples_per_image=90, mask_size=128):
@@ -308,6 +357,7 @@ def generate_negative_samples(max_samples_per_image=90, mask_size=128):
 
         img_path: str = os.path.join(img_folder, "image.png")
         img: Image = Image.open(img_path)
+        img = pure_pil_alpha_to_color_v2(img)
         if mask_sum is not None:
             mask = mask_sum.astype(np.uint8)
             for _ in range(max_samples_per_image):
@@ -341,8 +391,10 @@ def generate_cracks_dataset():
 
     if not os.path.exists(CRACKS_DATASET_FOLDER):
         os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "train", "positive"))
+        os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "train", "masks"))
         os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "train", "negative"))
         os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "test", "positive"))
+        os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "test", "masks"))
         os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "test", "negative"))
         os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "masks_boxes"))
 
@@ -366,6 +418,10 @@ def generate_cracks_dataset():
         os.rename(
             os.path.join(CRACKS_DATASET_FOLDER, "train", "positive", sample),
             os.path.join(CRACKS_DATASET_FOLDER, "test", "positive", sample),
+        )
+        os.rename(
+            os.path.join(CRACKS_DATASET_FOLDER, "train", "masks", sample),
+            os.path.join(CRACKS_DATASET_FOLDER, "test", "masks", sample),
         )
 
     # move last 20% of negative samples to test folder
