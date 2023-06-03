@@ -31,7 +31,7 @@ MASKRCNN_DATASET_FOLDER = config["PATHS"]["MASKRCNN_DATASET"]
 
 
 # Generate a new appropriate dataset
-generate_maskrcnn_dataset()
+# generate_maskrcnn_dataset()
 
 
 
@@ -359,10 +359,8 @@ def evaluate_hyper(model, data_loader, device):
     return loss_mask
 
 # Hyperparaneter tuning: for number of epochs and learning rate
-def hyperparameter_tuning_1(num_epochs_list, learning_rates):
-    # from toolbox.aws import shutdown
-
-    batch_size = 2
+def hyperparameter_tuning_1(num_epochs_list, learning_rates, batch_size):
+    from toolbox.aws import shutdown
 
     # get the data loaders
     _, _, data_loader, data_loader_test = datasets_and_dataloaders(batch_size)
@@ -414,13 +412,14 @@ def hyperparameter_tuning_1(num_epochs_list, learning_rates):
     # Save the best model
     torch.save(best_model.state_dict(), f"./models/maskrcnn_finetuned_model_hyper_2_epochs_{best_num_epochs}_learning_rate_{best_learning_rate}.pt")
 
-    # shutdown()
+    shutdown()
 
 
 
 
 if __name__ == '__main__':
     num_epochs_list = [10, 15, 20, 25, 30]
-    learning_rates = [1e-3, 5e-3, 1e-2]
+    learning_rates = [1e-3, 5e-3]
+    batch_size = 8
 
-    hyperparameter_tuning_1(num_epochs_list, learning_rates)
+    hyperparameter_tuning_1(num_epochs_list, learning_rates, batch_size)
