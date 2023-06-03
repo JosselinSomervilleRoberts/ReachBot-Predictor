@@ -5,6 +5,13 @@ datasets/
 saved_models/
 config.ini
 .vscode/
+logs/
+models/
+results/
+PennFudanPed/
+wandb/
+vision/
+PennFudanPed_Test/
 # **/*.ipynb
 wandb/
 classification_models/
