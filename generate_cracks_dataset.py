@@ -39,7 +39,9 @@ def get_bboxes_for_mask(mask, max_size=30):
 
     list_x = [x_curr]
     list_y = [y_curr]
-    while x_curr < x_global_max and y_curr < y_global_max:
+    nb_iter = 0
+    iter_max = 100
+    while x_curr < x_global_max and y_curr < y_global_max and nb_iter < iter_max:
         if len(list_x) >= 2:
             if list_x[-1] - list_x[-2] > 0:
                 max_x_diff = (non_zero_indices[1] - x_curr).max()
@@ -147,6 +149,8 @@ def get_bboxes_for_mask(mask, max_size=30):
             bboxes.append((x_curr, y_curr, x_global_max, y_global_max))
             break
 
+        nb_iter += 1
+
     return bboxes
 
 
@@ -210,8 +214,12 @@ def generate_positive_samples(output_size=64, max_size=64, min_size=32):
         mask = gt_masks[image_number]
         bboxes = get_bboxes_for_mask(mask, max_size=max_size)
         square_bboxes = get_square_bboxes(bboxes, mask, min_size=min_size)
+        mask_boxes = mask.copy().astype(np.uint8) * 255
         for bbox in square_bboxes:
             image_cropped = image[bbox[1] : bbox[3], bbox[0] : bbox[2]]
+            mask_boxes = cv2.rectangle(
+                mask_boxes, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (255, 0, 0), 2
+            )
             image_resized = cv2.resize(image_cropped, (output_size, output_size))
             cv2.imwrite(
                 os.path.join(
@@ -223,6 +231,14 @@ def generate_positive_samples(output_size=64, max_size=64, min_size=32):
                 image_resized,
             )
             nb_positive_samples += 1
+        cv2.imwrite(
+            os.path.join(
+                CRACKS_DATASET_FOLDER,
+                "masks_boxes",
+                f"{image_number}.png",
+            ),
+            mask_boxes,
+        )
 
     return nb_positive_samples
 
@@ -304,6 +320,7 @@ def generate_cracks_dataset():
         os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "train", "negative"))
         os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "test", "positive"))
         os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "test", "negative"))
+        os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "masks_boxes"))
 
     print("Generating positive samples...")
     nb_positive_samples = generate_positive_samples()
