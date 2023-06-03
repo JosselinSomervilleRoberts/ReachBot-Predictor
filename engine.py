@@ -8,9 +8,10 @@ import torchvision.models.detection.mask_rcnn
 from coco_utils import get_coco_api_from_dataset
 from coco_eval import CocoEvaluator
 import utils
+import wandb
 
 
-def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
+def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, log_wandb):
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
@@ -36,6 +37,15 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
         losses_reduced = sum(loss for loss in loss_dict_reduced.values())
 
         loss_value = losses_reduced.item()
+
+        if log_wandb:
+            wandb.log({"Epoch": epoch,
+                       "loss": loss_value,
+                       "loss_classifier": loss_dict_reduced['loss_classifier'],
+                       "loss_box_reg": loss_dict_reduced['loss_box_reg'],
+                       "loss_mask": loss_dict_reduced['loss_mask'],
+                       "loss_objectness": loss_dict_reduced['loss_objectness'],
+                       "loss_rpn_box_reg": loss_dict_reduced['loss_rpn_box_reg']})
 
         if not math.isfinite(loss_value):
             print("Loss is {}, stopping training".format(loss_value))

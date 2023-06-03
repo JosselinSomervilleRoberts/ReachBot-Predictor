@@ -20,6 +20,7 @@ warnings.filterwarnings('ignore')
 import torchvision.models.detection.mask_rcnn
 from coco_utils import get_coco_api_from_dataset
 from coco_eval import CocoEvaluator
+import wandb
 
 # config
 config = configparser.ConfigParser()
@@ -334,7 +335,7 @@ def build_model_hyper(num_classes, hidden_layer_size):
     return model
 
 @torch.no_grad()
-def evaluate_hyper(model, data_loader, device):
+def evaluate_hyper(model, data_loader, device, log_wandb):
     n_threads = torch.get_num_threads()
     # FIXME remove this and make paste_masks_in_image run on the GPU
     torch.set_num_threads(1)
@@ -342,84 +343,140 @@ def evaluate_hyper(model, data_loader, device):
     header = 'Test:'
 
     # Average the loss_mask over the test dataset
-    loss_mask = 0
+    loss = 0
     with torch.no_grad():
-        for image, targets in metric_logger.log_every(data_loader, 100, header):
-            image = list(img.to(device) for img in image)
+        for images, targets in metric_logger.log_every(data_loader, 100, header):
+            images = list(image.to(device) for image in images)
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
             
-            outputs = model(image, targets)
+            loss_dict = model(images, targets)
+
+            # reduce losses over all GPUs for logging purposes
+            loss_dict_reduced = utils.reduce_dict(loss_dict)
+            losses_reduced = sum(loss for loss in loss_dict_reduced.values())
+
+            loss_value = losses_reduced.item()
 
             # get the loss_mask
-            loss_mask += outputs['loss_mask'].item()
+            loss += loss_value
 
-    loss_mask = loss_mask / len(data_loader)
+            if log_wandb:
+                wandb.log({
+                        "eval_loss_classifier": loss_dict_reduced['loss_classifier'],
+                        "eval_loss_box_reg": loss_dict_reduced['loss_box_reg'],
+                        "eval_loss_mask": loss_dict_reduced['loss_mask'],
+                        "eval_loss_objectness": loss_dict_reduced['loss_objectness'],
+                        "eval_loss_rpn_box_reg": loss_dict_reduced['loss_rpn_box_reg']})
+
+    loss = loss / len(data_loader)
+
+    if log_wandb:
+        wandb.log({"eval_loss": loss})
 
     torch.set_num_threads(n_threads)
-    return loss_mask
+    return loss
 
 # Hyperparaneter tuning: for number of epochs and learning rate
-def hyperparameter_tuning_1(num_epochs_list, learning_rates, batch_size):
-    from toolbox.aws import shutdown
+def hyperparameter_tuning_1(params, log_wandb):
+    # from toolbox.aws import shutdown
+
+    # get the parameters
+    learning_rates = params['learning_rates']
+    num_epochs = params['num_epochs']
+    batch_size = params['batch_size']
+    weight_decay = params['weight_decay']
+    momentum = params['momentum']
+    gamma = params['gamma']
+    step_size = params['step_size']
 
     # get the data loaders
-    _, _, data_loader, data_loader_test = datasets_and_dataloaders(batch_size)
+    dataset, dataset_test, data_loader, data_loader_test = datasets_and_dataloaders(batch_size)
     
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
     # our dataset has two classes only - background and boulder
     num_classes = 2
 
-    best_loss_mask = 0
+    best_loss = 0
 
-    for num_epochs in num_epochs_list:
-        for learning_rate in learning_rates:
+    for learning_rate in learning_rates:
 
-            # get the model using our helper function
-            model = build_model(num_classes)
-            # move model to the right device
-            model.to(device)
+        # get the model using our helper function
+        model = build_model(num_classes)
+        # move model to the right device
+        model.to(device)
 
-            # construct an optimizer with the default parameters
-            params = [p for p in model.parameters() if p.requires_grad]
-            optimizer = torch.optim.SGD(params, lr=learning_rate,
-                                        momentum=0.9, weight_decay=0.0005)
+        # construct an optimizer with the default parameters
+        params = [p for p in model.parameters() if p.requires_grad]
+        optimizer = torch.optim.SGD(params, lr=learning_rate,
+                                    momentum=momentum, weight_decay=weight_decay)
 
-            # and a learning rate scheduler which decreases the learning rate by
-            # 10x every 3 epochs
-            lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-                                                        step_size=3,
-                                                        gamma=0.1)
+        # and a learning rate scheduler which decreases the learning rate by
+        # 10x every 3 epochs
+        # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
+        
+        # Initialize Weights & Biases
+        if log_wandb:
+            wandb.init(
+                # set the wandb project where this run will be logged
+                project="NASA-ReachBot",
 
-            print(f'Tuning for num_epochs={num_epochs} and learning_rate={learning_rate}')
-            
-            # train for num_epochs epochs
-            for epoch in range(num_epochs):
-                # train for one epoch, printing every 10 iterations
-                train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
-                # update the learning rate
-                lr_scheduler.step()
-                # evaluate on the test dataset
-                loss_mask = evaluate_hyper(model, data_loader_test, device)
-                # save the best model
-                if loss_mask > best_loss_mask:
-                    best_loss_mask = loss_mask
-                    best_model = model
-                    best_num_epochs = num_epochs
-                    best_learning_rate = learning_rate
+                name=f"Mask-RCNN_Finetuning_class=boulder_hyper_tuning_2_learning_rate={learning_rate}",
+                
+                # track hyperparameters and run metadata
+                config={
+                "architecture": "Mask-RCNN",
+                "dataset": "Custom Labelbox Dataset",
+                "classes": "boulder",
+                "learning_rate": learning_rate,
+                "weight_decay": weight_decay,
+                "momentum": momentum,
+                "step_size": step_size,
+                "gamma": gamma,
+                "batch_size": batch_size,
+                "train_size": len(dataset),
+                "test_size": len(dataset_test),
+                "epochs": num_epochs,
+                }
+            )
 
-    print(f'--------The best model is the one with num_epochs={best_num_epochs} and learning_rate={best_learning_rate}')
+        print(f'--------Tuning for learning_rate={learning_rate}--------')
+        
+        # train for num_epochs epochs
+        for epoch in range(num_epochs):
+            # train for one epoch, printing every 10 iterations
+            train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10, log_wandb=log_wandb)
+            # update the learning rate
+            # lr_scheduler.step()
+            # evaluate on the test dataset
+            loss = evaluate_hyper(model, data_loader_test, device, log_wandb)
+            # save the best model
+            if loss > best_loss:
+                best_loss = loss
+                best_model = model
+                best_learning_rate = learning_rate
+
+        wandb.finish()
+
+    print(f'--------The best model is the one with learning_rate={best_learning_rate}')
     # Save the best model
-    torch.save(best_model.state_dict(), f"./models/maskrcnn_finetuned_model_hyper_2_epochs_{best_num_epochs}_learning_rate_{best_learning_rate}.pt")
+    torch.save(best_model.state_dict(), f"./models/maskrcnn_finetuned_model_hyper_2_epochs_{num_epochs}_learning_rate_{best_learning_rate}.pt")
 
-    shutdown()
+    # shutdown()
 
 
 
 
 if __name__ == '__main__':
-    num_epochs_list = [10, 15, 20, 25, 30]
-    learning_rates = [1e-3, 5e-3]
-    batch_size = 8
+    log_wandb = True
 
-    hyperparameter_tuning_1(num_epochs_list, learning_rates, batch_size)
+    params = {}
+    params['num_epochs'] = 20
+    params['learning_rates'] = [1e-3, 5e-3, 1e-2, 5e-2, 1e-1]
+    params['batch_size'] = 2
+    params['weight_decay'] = 5e-4
+    params['momentum'] = 0.9
+    params['step_size'] = 3
+    params['gamma'] = 0.1
+
+    hyperparameter_tuning_1(params, log_wandb)
