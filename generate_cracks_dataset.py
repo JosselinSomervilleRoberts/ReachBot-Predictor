@@ -20,7 +20,7 @@ FINETUNE_DATASET_FOLDER = config["PATHS"]["FINETUNE_DATASET"]
 CRACKS_DATASET_FOLDER = config["PATHS"]["CRACKS_DATASET"]
 
 
-def get_bboxes_for_mask(mask, max_size=30):
+def get_bboxes_for_mask(mask, max_size=64):
     non_zero_indices = np.nonzero(mask)
     x_min_idxs = (non_zero_indices[1] == non_zero_indices[1].min()).nonzero()[0]
     x_min_idx = x_min_idxs[np.argmin(non_zero_indices[0][x_min_idxs])]
@@ -154,7 +154,7 @@ def get_bboxes_for_mask(mask, max_size=30):
     return bboxes
 
 
-def get_square_bboxes(bboxes, mask, min_size=64, margin=0.2):
+def get_square_bboxes(bboxes, mask, min_size=32, margin=0.2, jitter=0.3):
     square_bboxes = []
     for bbox in bboxes:
         x1, y1, x2, y2 = bbox
@@ -178,31 +178,55 @@ def get_square_bboxes(bboxes, mask, min_size=64, margin=0.2):
         if x2 - x1 < min_size:
             continue
 
-        x1 = x1 - int((x2 - x1) * margin)
-        y1 = y1 - int((y2 - y1) * margin)
-        x2 = x2 + int((x2 - x1) * margin)
-        y2 = y2 + int((y2 - y1) * margin)
+        new_x1 = x1 - int((x2 - x1) * margin)
+        new_y1 = y1 - int((y2 - y1) * margin)
+        new_x2 = x2 + int((x2 - x1) * margin)
+        new_y2 = y2 + int((y2 - y1) * margin)
 
-        # if the square bbox is out of the image boundary, then clip it and add padding to the other side to preserve the bbox size
-        if x1 < 0:
-            x2 = x2 - x1
-            x1 = 0
-        if y1 < 0:
-            y2 = y2 - y1
-            y1 = 0
-        if x2 > mask.shape[1]:
-            x1 = x1 - (x2 - mask.shape[1])
-            x2 = mask.shape[1]
-        if y2 > mask.shape[0]:
-            y1 = y1 - (y2 - mask.shape[0])
-            y2 = mask.shape[0]
+        # add jitters to the square bboxes
+        # add jitter to the left
+        x1_left = new_x1 - int((x2 - x1) * jitter)
+        x2_left = new_x2 - int((x2 - x1) * jitter)
+        # add jitter to the right
+        x1_right = new_x1 + int((x2 - x1) * jitter)
+        x2_right = new_x2 + int((x2 - x1) * jitter)
+        # add jitter to the top
+        y1_top = new_y1 - int((y2 - y1) * jitter)
+        y2_top = new_y2 - int((y2 - y1) * jitter)
+        # add jitter to the bottom
+        y1_bottom = new_y1 + int((y2 - y1) * jitter)
+        y2_bottom = new_y2 + int((y2 - y1) * jitter)
 
-        square_bboxes.append((x1, y1, x2, y2))
+        jittered_bboxes = [
+            (new_x1, new_y1, new_x2, new_y2),
+            (x1_left, new_y1, x2_left, new_y2),
+            (x1_right, new_y1, x2_right, new_y2),
+            (new_x1, y1_top, new_x2, y2_top),
+            (new_x1, y1_bottom, new_x2, y2_bottom),
+        ]
 
-    return square_bboxes
+        for jittered_bbox in jittered_bboxes:
+            x1, y1, x2, y2 = jittered_bbox
+            # if the square bbox is out of the image boundary, then clip it and add padding to the other side to preserve the bbox size
+            if x1 < 0:
+                x2 = x2 - x1
+                x1 = 0
+            if y1 < 0:
+                y2 = y2 - y1
+                y1 = 0
+            if x2 > mask.shape[1]:
+                x1 = x1 - (x2 - mask.shape[1])
+                x2 = mask.shape[1]
+            if y2 > mask.shape[0]:
+                y1 = y1 - (y2 - mask.shape[0])
+                y2 = mask.shape[0]
+
+            square_bboxes.append((x1, y1, x2, y2))
+
+    return list(set(square_bboxes))
 
 
-def generate_positive_samples(output_size=64, max_size=64, min_size=32):
+def generate_positive_samples(output_size=128, max_size=128, min_size=32):
     class_name = "crack"
     gt_masks = load_gt_masks(class_name)
     nb_positive_samples = 0
@@ -256,7 +280,7 @@ def find_negative_samples(mask, mask_size, max_attempts=10):
     return None, None
 
 
-def generate_negative_samples(max_samples_per_image=10, mask_size=64):
+def generate_negative_samples(max_samples_per_image=90, mask_size=128):
     num_images = len(os.listdir(LABELBOX_DATASET_FOLDER))
     print(f"Found {num_images} images")
 

@@ -7,7 +7,7 @@ config.ini
 .vscode/
 # **/*.ipynb
 wandb/
-*-cracks/
+classification_models/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
