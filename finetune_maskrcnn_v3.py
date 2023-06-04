@@ -21,12 +21,14 @@ import torchvision.models.detection.mask_rcnn
 from coco_utils import get_coco_api_from_dataset
 from coco_eval import CocoEvaluator
 import wandb
+from  evaluation.compute_metrics import compute_all_metrics
 
 # config
 config = configparser.ConfigParser()
 config.read('./config.ini')
 LABELBOX_DATASET_FOLDER = config["PATHS"]["LABELBOX_DATASET"]
 MASKRCNN_DATASET_FOLDER = config["PATHS"]["MASKRCNN_DATASET"]
+CLASS_NAMES = ["__background__", "boulder"]
 
 
 
@@ -342,7 +344,7 @@ def evaluate_hyper(model, data_loader, device, log_wandb):
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = 'Test:'
 
-    # Average the loss_mask over the test dataset
+    # Average the loss over the test dataset
     loss = 0
     with torch.no_grad():
         for images, targets in metric_logger.log_every(data_loader, 100, header):
@@ -376,8 +378,59 @@ def evaluate_hyper(model, data_loader, device, log_wandb):
     torch.set_num_threads(n_threads)
     return loss
 
+def evaluate_hyper_custom(model, data_loader, device, log_wandb):
+    n_threads = torch.get_num_threads()
+    # FIXME remove this and make paste_masks_in_image run on the GPU
+    torch.set_num_threads(1)
+    metric_logger = utils.MetricLogger(delimiter="  ")
+    header = 'Test:'
+
+    model.eval()
+
+    for images, targets in metric_logger.log_every(data_loader, 100, header):
+        images = list(image.to(device) for image in images)
+        targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+
+        predictions = model(images)
+
+        pred_masks = (predictions[0]['masks']).squeeze().detach().cpu().numpy()
+        pred_masks = np.array(pred_masks)
+
+        pred_masks_binary = (predictions[0]['masks']>0.5).squeeze().detach().cpu().numpy()
+        pred_masks_binary = np.array(pred_masks_binary)
+
+        ground_truth_mask = targets[0]['masks'].squeeze().detach().cpu().numpy()
+        ground_truth_mask = np.array(ground_truth_mask)
+
+        # merge all pred_masks into one pred_mask
+        pred_mask = np.max(pred_masks, axis=0)
+
+        # merge all pred_masks_binary into one pred_mask_binary
+        pred_mask_binary = np.zeros((pred_masks_binary.shape[1], pred_masks_binary.shape[2]))
+        for i in range(pred_masks_binary.shape[0]):
+            pred_mask_binary += pred_masks_binary[i,:,:]
+        # convert boolean values to integers
+        pred_mask_binary = pred_mask_binary.astype(int)
+
+        # merge all ground_truth_mask channels into one ground_truth_mask
+        # if there are multiple channels, it means that there are multiple objects in the image
+        if len(ground_truth_mask.shape) > 2:
+            ground_truth_mask = np.max(ground_truth_mask, axis=0)
+
+        metrics_custom = compute_all_metrics(ground_truth=ground_truth_mask,
+                                                    prediction=pred_mask,
+                                                    prediction_binary=pred_mask_binary,
+                                                    threshold=0.5)
+        if log_wandb:
+            wandb.log(metrics_custom)
+
+    torch.set_num_threads(n_threads)
+    return metrics_custom['average']
+
+            
+
 # Hyperparaneter tuning: for number of epochs and learning rate
-def hyperparameter_tuning_1(params, log_wandb):
+def hyperparameter_tuning(params, log_wandb):
     # from toolbox.aws import shutdown
 
     # get the parameters
@@ -449,7 +502,7 @@ def hyperparameter_tuning_1(params, log_wandb):
             # update the learning rate
             # lr_scheduler.step()
             # evaluate on the test dataset
-            loss = evaluate_hyper(model, data_loader_test, device, log_wandb)
+            loss = evaluate_hyper_custom(model, data_loader_test, device, log_wandb)
             # save the best model
             if loss > best_loss:
                 best_loss = loss
@@ -479,4 +532,4 @@ if __name__ == '__main__':
     params['step_size'] = 3
     params['gamma'] = 0.1
 
-    hyperparameter_tuning_1(params, log_wandb)
+    hyperparameter_tuning(params, log_wandb)

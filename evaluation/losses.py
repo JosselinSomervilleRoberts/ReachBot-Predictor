@@ -19,8 +19,8 @@ def iou_loss(ground_truth: torch.Tensor, prediction: torch.Tensor) -> torch.Tens
     Returns:
         The IoU loss.
     """
-    intersection = torch.sum(ground_truth * prediction)
-    union = torch.sum(prediction)
+    intersection = torch.minimum(ground_truth * prediction)
+    union = torch.maximum(prediction)
     if union == 0:
         return 1
     return 1 - intersection / union
@@ -39,8 +39,8 @@ def dice_loss(ground_truth: torch.Tensor, prediction: torch.Tensor) -> torch.Ten
     Returns:
         The Dice loss.
     """
-    intersection = torch.sum(ground_truth * prediction)
-    union = torch.sum(prediction)
+    intersection = torch.minimum(ground_truth * prediction)
+    union = torch.maximum(prediction)
     if union == 0:
         return 1
     return 1 - 2 * intersection / (union + intersection)

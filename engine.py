@@ -46,7 +46,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, lo
                        "loss_mask": loss_dict_reduced['loss_mask'],
                        "loss_objectness": loss_dict_reduced['loss_objectness'],
                        "loss_rpn_box_reg": loss_dict_reduced['loss_rpn_box_reg']})
-
+            
         if not math.isfinite(loss_value):
             print("Loss is {}, stopping training".format(loss_value))
             print(loss_dict_reduced)

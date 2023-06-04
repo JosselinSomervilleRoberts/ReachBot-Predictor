@@ -8,7 +8,7 @@ import torch
 from PIL import Image
 
 from typing import Tuple, Union, Dict, Optional
-from metrics import iou_score, dice_score
+from evaluation.metrics import iou_score, dice_score
 
 
 def to_np(image: Union[np.ndarray, torch.Tensor, Image.Image], dtype: np.dtype = np.float32) -> np.ndarray:
