@@ -21,7 +21,8 @@ import torchvision.models.detection.mask_rcnn
 from coco_utils import get_coco_api_from_dataset
 from coco_eval import CocoEvaluator
 import wandb
-from  evaluation.compute_metrics import compute_all_metrics
+from  evaluation.compute_metrics import compute_all_metrics, log_metrics
+from tqdm import tqdm
 
 # config
 config = configparser.ConfigParser()
@@ -387,7 +388,9 @@ def evaluate_hyper_custom(model, data_loader, device, log_wandb):
 
     model.eval()
 
-    for images, targets in metric_logger.log_every(data_loader, 100, header):
+    metrics_custom_list = []
+
+    for images, targets in tqdm(metric_logger.log_every(data_loader, 100, header), desc="Evaluating"):
         images = list(image.to(device) for image in images)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
@@ -417,15 +420,18 @@ def evaluate_hyper_custom(model, data_loader, device, log_wandb):
         if len(ground_truth_mask.shape) > 2:
             ground_truth_mask = np.max(ground_truth_mask, axis=0)
 
-        metrics_custom = compute_all_metrics(ground_truth=ground_truth_mask,
+        metrics_custom_list.append(compute_all_metrics(ground_truth=ground_truth_mask,
                                                     prediction=pred_mask,
                                                     prediction_binary=pred_mask_binary,
-                                                    threshold=0.5)
-        if log_wandb:
-            wandb.log(metrics_custom)
+                                                    threshold=0.5))
+        # if log_wandb:
+        #     wandb.log(metrics_custom)
+
+    log_metrics(metrics_custom_list, log_wandb)
 
     torch.set_num_threads(n_threads)
-    return metrics_custom['average']
+    # return the average of metrics_custom['average'] over all metrics_custom dictionaries in metrics_custom_list
+    return np.mean([metrics_custom['full_mask']['average'] for metrics_custom in metrics_custom_list])
 
             
 
