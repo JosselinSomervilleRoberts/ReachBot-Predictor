@@ -180,9 +180,11 @@ def generate_finetuning_dataset() -> None:
 
     num_masks_added = {}
     num_masks_failed = {}
-
-    for i in tqdm(range(num_images)):
-        img_folder = os.path.join(LABELBOX_DATASET_FOLDER, str(i))
+    # list directories in the dataset folder
+    list_dirs = os.listdir(LABELBOX_DATASET_FOLDER)
+    dict_images = {i: list_dirs[i] for i in range(len(list_dirs))}
+    for i in tqdm(dict_images):
+        img_folder = os.path.join(LABELBOX_DATASET_FOLDER, str(dict_images[i]))
         classes_file = os.path.join(img_folder, "classes.txt")
 
         for class_mask in CLASSES:
