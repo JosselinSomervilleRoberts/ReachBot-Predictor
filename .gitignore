@@ -2,6 +2,7 @@
 *.pth
 datasets/
 !mmselfsup/mmselfsup/datasets/
+!mmsegmentation/mmseg/datasets/
 !mmsegmentation/configs/_base_/datasets/
 saved_models/
 config.ini
