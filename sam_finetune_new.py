@@ -170,7 +170,7 @@ def process_batch(sam_model, data, keep_grad: bool, device: str) -> torch.Tensor
             image_pe=sam_model.prompt_encoder.get_dense_pe(),
             sparse_prompt_embeddings=sparse_embeddings,
             dense_prompt_embeddings=dense_embeddings,
-            multimask_output=True,
+            multimask_output=False,
         )
         # Postprocess each mask individually and then concatenate then to [batch_size, 1, H, W]
         binary_masks = torch.zeros((low_res_masks.shape[0], 128, 128), device=device)
@@ -215,6 +215,23 @@ def train(sam_model, args, train_dataloader, val_dataloader):
                 #     l.log_image(f"Input image {k}", input_image[0])
                 #     l.log_image(f"Ground truth mask {k}", gt_binary_mask[0][0])
                 #     l.log_image(f"Predicted mask {k}", binary_mask[0][0])
+
+                # Plot the gt_binary_mask and binary_mask using matplotlib
+                if args.plot_every_batch > 0 and k % args.plot_every_batch == 0:
+                    input_image = data[0]
+                    plt.figure(figsize=(20,20))
+                    plt.subplot(1, 3, 1)
+                    plt.imshow(input_image[0].permute(0, 1, 2).detach().cpu().numpy())
+                    plt.axis('off')
+                    plt.subplot(1, 3, 2)
+                    plt.imshow(gt_binary_masks[0].detach().cpu().numpy())
+                    plt.axis('off')
+                    plt.subplot(1, 3, 3)
+                    binary_mask = binary_masks[0].detach()
+                    binary_mask = (binary_mask / torch.max(binary_mask)) > 0.5
+                    plt.imshow(binary_mask.cpu().numpy())
+                    plt.axis('off')
+                    plt.savefig(f"./plots/epoch_{epoch}_batch_{k+1}.png")
                 
                 # Compute loss
                 loss = loss_fn(binary_masks, gt_binary_masks)
@@ -237,7 +254,7 @@ def train(sam_model, args, train_dataloader, val_dataloader):
                 binary_masks, gt_binary_masks = process_batch(sam_model, data, keep_grad=False, device=device)
 
                 for i in range(args.batch_size):
-                    metrics = compute_all_metrics(ground_truth=gt_binary_masks[i], prediction_binary=binary_masks[i])
+                    metrics = compute_all_metrics(ground_truth=gt_binary_masks[i], prediction_binary=(binary_masks[i] / torch.max(binary_masks[i])) > 0.5)
                     list_metrics.append(metrics)
         print("")
         log_metrics(list_metrics)
@@ -306,12 +323,13 @@ def parse_args():
     parser.add_argument("--model_type", type=str, default="vit_b", help="Type of SAM.")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
     parser.add_argument("--weight_decay", type=float, default=0.0, help="Weight decay")
-    parser.add_argument("--num_epochs", type=int, default=50, help="Number of epochs")
+    parser.add_argument("--num_epochs", type=int, default=10, help="Number of epochs")
     parser.add_argument("--save_model", type=bool, default=False, help="Whether to save the model")
     parser.add_argument("--n_train", type=int, default=-1, help="Number of training images")
     parser.add_argument("--n_val", type=int, default=-1, help="Number of test images")
-    parser.add_argument("--grad_accumulations", type=int, default=4, help="Number of gradient accumulation steps")
+    parser.add_argument("--grad_accumulations", type=int, default=8, help="Number of gradient accumulation steps")
     parser.add_argument("--batch_size", type=int, default=4, help="Batch size")
+    parser.add_argument("--plot_every_batch", type=int, default=50, help="Plot predictions every")
 
     # For Logger
     parser.add_argument("--verbose", type=bool, default=False, help="Whether to print to console")
