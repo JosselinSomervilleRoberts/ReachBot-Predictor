@@ -8,9 +8,9 @@ import torch
 from PIL import Image
 
 from typing import Tuple, Union, Dict, Optional, List
-from metrics import iou_score, dice_score
+from evaluation.metrics import iou_score, dice_score
 from skimage.morphology import label
-from toolbox.printing import print_color
+from toolbox.printing import print_color, warn, debug
 import wandb
 
 
@@ -36,7 +36,7 @@ def to_np(image: Union[np.ndarray, torch.Tensor, Image.Image], dtype: np.dtype =
             f"tensor. Got {type(image)}."
         )
 
-    if image.dtype == np.uint8:
+    if image.dtype == np.uint8 and np.max(image) > 1:
         image = image.astype(np.float32) / 255.0
 
     if image.dtype != dtype:
@@ -125,7 +125,6 @@ def separate_masks(mask: Union[np.ndarray, torch.Tensor, Image.Image]) -> Tuple[
         if i == 0:  # background
             continue
         blob = (separated_mask == i).astype(int)
-        blobs.append(blob)
         # Get the bounding box
         bbox = np.array((Image.fromarray(blob.squeeze(-1).astype(np.uint8) * 255)).getbbox())
 
@@ -141,6 +140,7 @@ def separate_masks(mask: Union[np.ndarray, torch.Tensor, Image.Image]) -> Tuple[
         )
         bbox = np.array(bbox)
         bboxes.append(bbox)
+        blobs.append(blob[bbox[1]:bbox[3], bbox[0]:bbox[2]])
 
     return blobs, bboxes
 
@@ -408,9 +408,9 @@ def compute_all_metrics_on_single_image(
     # Converts to numpy array.
     # This is done in all the metrics but the functions is very fast
     # if the image is already a numpy array.
-    ground_truth = to_np(ground_truth)
+    ground_truth = to_np(ground_truth, dtype=bool)
     if prediction is not None: prediction = to_np(prediction)
-    if prediction_binary is not None: prediction_binary = to_np(prediction_binary)
+    if prediction_binary is not None: prediction_binary = to_np(prediction_binary, dtype=bool)
 
     # Computes the metrics
     metrics = {}
@@ -471,7 +471,7 @@ def compute_all_metrics(
     # Computes the metrics on each individual mask
     metrics_individual: List[Dict[str, float]] = []
 
-    # Separate the masks of the ground truth
+    # Separate the masks of the ground
     ground_truth_masks, bboxes = separate_masks(ground_truth)
     # Separate the masks of the prediction
     prediction_masks, prediction_binary_masks = None, None
@@ -481,6 +481,11 @@ def compute_all_metrics(
         prediction_binary_masks = separate_masks_from_bbox(prediction_binary, bboxes)
     
     # Compute the metrics for each mask
+    if len(ground_truth_masks) == 0:
+        warn("No masks found in the ground truth image.")
+        ground_truth_masks = [ground_truth]
+        prediction_masks = [prediction] if prediction is not None else None
+        prediction_binary_masks = [prediction_binary] if prediction_binary is not None else None
     for i, ground_truth_mask in enumerate(ground_truth_masks):
         metrics_individual.append(compute_all_metrics_on_single_image(
             ground_truth=ground_truth_mask,
