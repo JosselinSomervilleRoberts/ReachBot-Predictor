@@ -23,6 +23,7 @@ from coco_eval import CocoEvaluator
 import wandb
 from  evaluation.compute_metrics import compute_all_metrics, log_metrics
 from tqdm import tqdm
+from toolbox.printing import print_color
 
 # config
 config = configparser.ConfigParser()
@@ -406,7 +407,7 @@ def evaluate_hyper_custom(model, data_loader_test, device, log_wandb):
         ground_truth_mask = np.array(ground_truth_mask)
 
         # merge all pred_masks into one pred_mask
-        if len(pred_masks.shape) > 2:
+        if len(pred_masks.shape) > 1:
             pred_mask = np.max(pred_masks, axis=0)
         else:
             pred_mask = pred_masks
@@ -504,10 +505,11 @@ def hyperparameter_tuning(params, log_wandb):
                 }
             )
 
-        print(f'--------Tuning for learning_rate={learning_rate}--------')
+        print_color(f'\n--------Tuning for learning_rate={learning_rate}--------', color='purple')
         
         # train for num_epochs epochs
         for epoch in range(num_epochs):
+            print_color(f"\n--------Epoch {epoch+1}/{num_epochs}--------", color="blue")
             # train for one epoch, printing every 10 iterations
             train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10, log_wandb=log_wandb)
             # update the learning rate
