@@ -272,13 +272,15 @@ def generate_positive_samples(output_size=128, max_size=128, min_size=32):
             )
             mask_cropped = curr_total_mask[bbox[1] : bbox[3], bbox[0] : bbox[2]]
             mask_resized = cv2.resize(mask_cropped, (output_size, output_size))
+            mask_palette = np.zeros((output_size, output_size))
+            mask_palette[mask_resized > 0] = 1
             cv2.imwrite(
                 os.path.join(
                     CRACKS_DATASET_FOLDER,
                     "masks",
                     f"{nb_positive_samples}.png",
                 ),
-                mask_resized,
+                mask_palette,
             )
             nb_positive_samples += 1
 
