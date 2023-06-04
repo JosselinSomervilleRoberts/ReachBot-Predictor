@@ -431,8 +431,6 @@ def evaluate_hyper_custom(model, data_loader_test, device, log_wandb):
                                                     prediction=pred_mask,
                                                     prediction_binary=pred_mask_binary,
                                                     threshold=0.5))
-        # if log_wandb:
-        #     wandb.log(metrics_custom)
 
     log_metrics(metrics_custom_list, log_wandb)
 
