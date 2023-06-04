@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import scipy
 import time
 
-from compute_metrics import compute_all_metrics, to_np
+from compute_metrics import compute_all_metrics, to_np, log_metrics
 
 # Load the image and the ground truth segmentation
 # config
@@ -37,12 +37,14 @@ mask = mask.crop(bbox)
 mask = 1. - to_np(mask)
 
 # Generate a fake prediction
+print("Generating fake prediction...")
 prediction = mask.copy()
 prediction = np.roll(prediction, 10, axis=0)
 prediction = np.roll(prediction, 10, axis=1)
 # Add noise
 prediction = prediction + np.abs(np.random.normal(0, 2.0, prediction.shape)) / (1+scipy.ndimage.distance_transform_edt(prediction <= 0.5))**2
 prediction = prediction >= 0.5
+print("Done\n")
 
 
 # Compute all the metrics
@@ -51,44 +53,41 @@ print("Computing metrics...")
 start_time = time.time()
 metrics = compute_all_metrics(ground_truth=mask, prediction_binary=prediction)
 print(f"Time elapsed: {time.time() - start_time:.2f} seconds")
-print("\nMetrics:")
-for metric_name, metric_value in metrics.items():
-    print(f"{metric_name}: {metric_value}")
+log_metrics(metrics)
 
 # Test what happends if the prediction is the same as the ground truth
 prediction_1 = mask.copy()
 metrics_1 = compute_all_metrics(ground_truth=mask, prediction_binary=prediction_1)
 print("\nMetrics when the prediction is the same as the ground truth:")
-for metric_name, metric_value in metrics_1.items():
-    print(f"{metric_name}: {metric_value}")
+log_metrics(metrics_1)
 
 # Test what happends if the prediction is the opposite of the ground truth
 prediction_2 = 1 - mask.copy()
 metrics_2 = compute_all_metrics(ground_truth=mask, prediction_binary=prediction_2)
 print("\nMetrics when the prediction is the opposite of the ground truth:")
-for metric_name, metric_value in metrics_2.items():
-    print(f"{metric_name}: {metric_value}")
+log_metrics(metrics_2)
 
 # Test what happens if the prediction is full of 0s
 prediction_3 = np.zeros_like(mask)
 metrics_3 = compute_all_metrics(ground_truth=mask, prediction_binary=prediction_3)
 print("\nMetrics when the prediction is full of 0s:")
-for metric_name, metric_value in metrics_3.items():
-    print(f"{metric_name}: {metric_value}")
+log_metrics(metrics_3)
 
 # Test what happens if the prediction is full of 1s
 prediction_4 = np.ones_like(mask)
 metrics_4 = compute_all_metrics(ground_truth=mask, prediction_binary=prediction_4)
 print("\nMetrics when the prediction is full of 1s:")
-for metric_name, metric_value in metrics_4.items():
-    print(f"{metric_name}: {metric_value}")
+log_metrics(metrics_4)
 
 # Test what happens if the prediction is random
 prediction_5 = np.random.rand(*mask.shape) >= 0.5
 metrics_5 = compute_all_metrics(ground_truth=mask, prediction_binary=prediction_5)
 print("\nMetrics when the prediction is random:")
-for metric_name, metric_value in metrics_5.items():
-    print(f"{metric_name}: {metric_value}")
+log_metrics(metrics_5)
+
+print("")
+all_metrics = [metrics, metrics_1, metrics_2, metrics_3, metrics_4, metrics_5]
+log_metrics(all_metrics)
 
 intersection = np.logical_and(mask, prediction)
 union = np.logical_or(mask, prediction)
