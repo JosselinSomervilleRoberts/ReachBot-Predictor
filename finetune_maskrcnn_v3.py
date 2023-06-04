@@ -406,25 +406,21 @@ def evaluate_hyper_custom(model, data_loader_test, device, log_wandb):
         ground_truth_mask = targets[0]['masks'].squeeze().detach().cpu().numpy()
         ground_truth_mask = np.array(ground_truth_mask)
 
-        # merge all pred_masks into one pred_mask
-        if len(pred_masks.shape) > 1:
-            pred_mask = np.max(pred_masks, axis=0)
+        if pred_masks.shape[0] == 0:
+            pred_mask = np.zeros(pred_masks.shape[1], pred_masks.shape[2])
+            pred_mask_binary = np.zeros(pred_masks.shape[1], pred_masks.shape[2])
         else:
-            pred_mask = pred_masks
-
-        # if pred_masks_binary has 3 dimensions, take the 2nd and 3rd, else take the 1st and 2nd
-        pred_mask_binary = np.zeros((pred_masks_binary.shape[len(pred_masks_binary.shape) - 2], pred_masks_binary.shape[len(pred_masks_binary.shape) - 1]))
-        # if pred_masks_binary has 3 dimensions, merge all pred_masks_binary into one pred_mask_binary
-        if len(pred_masks_binary.shape) > 2:
+            # merge all pred_masks into one pred_mask
+            pred_mask = np.max(pred_masks, axis=0)
+            
+            # merge all pred_masks_binary into one pred_mask_binary
+            pred_mask_binary = np.zeros((pred_masks_binary.shape[1], pred_masks_binary.shape[2]))
             for i in range(pred_masks_binary.shape[0]):
                 pred_mask_binary += pred_masks_binary[i,:,:]
-        else:
-            pred_mask_binary = pred_masks_binary
-        # convert boolean values to integers
-        pred_mask_binary = pred_mask_binary.astype(int)
+            # convert boolean values to integers
+            pred_mask_binary = pred_mask_binary.astype(int)
 
         # merge all ground_truth_mask channels into one ground_truth_mask
-        # if there are multiple channels, it means that there are multiple objects in the image
         if len(ground_truth_mask.shape) > 2:
             ground_truth_mask = np.max(ground_truth_mask, axis=0)
 
@@ -505,11 +501,11 @@ def hyperparameter_tuning(params, log_wandb):
                 }
             )
 
-        print_color(f'\n--------Tuning for learning_rate={learning_rate}--------', color='purple')
+        print_color(f'\n----------Tuning for learning_rate={learning_rate}', color='purple')
         
         # train for num_epochs epochs
         for epoch in range(num_epochs):
-            print_color(f"\n--------Epoch {epoch+1}/{num_epochs}--------", color="blue")
+            print_color(f"\n----------Epoch {epoch+1}/{num_epochs}", color="blue")
             # train for one epoch, printing every 10 iterations
             train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10, log_wandb=log_wandb)
             # update the learning rate
