@@ -9,13 +9,14 @@ from coco_utils import get_coco_api_from_dataset
 from coco_eval import CocoEvaluator
 import utils
 import wandb
+from tqdm import tqdm
 
 
 def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, log_wandb):
     model.train()
-    metric_logger = utils.MetricLogger(delimiter="  ")
-    metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    header = 'Epoch: [{}]'.format(epoch)
+    # metric_logger = utils.MetricLogger(delimiter="  ")
+    # metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
+    # header = 'Epoch: [{}]'.format(epoch)
 
     lr_scheduler = None
     if epoch == 0:
@@ -24,7 +25,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, lo
 
         lr_scheduler = utils.warmup_lr_scheduler(optimizer, warmup_iters, warmup_factor)
 
-    for images, targets in metric_logger.log_every(data_loader, print_freq, header):
+    for images, targets in tqdm(data_loader, desc="Training (batch)", total=len(data_loader)):
         images = list(image.to(device) for image in images)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
@@ -40,12 +41,12 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, lo
 
         if log_wandb:
             wandb.log({"Epoch": epoch,
-                       "loss": loss_value,
-                       "loss_classifier": loss_dict_reduced['loss_classifier'],
-                       "loss_box_reg": loss_dict_reduced['loss_box_reg'],
-                       "loss_mask": loss_dict_reduced['loss_mask'],
-                       "loss_objectness": loss_dict_reduced['loss_objectness'],
-                       "loss_rpn_box_reg": loss_dict_reduced['loss_rpn_box_reg']})
+                       "Train/train_loss": loss_value,
+                       "Train/train_loss_classifier": loss_dict_reduced['loss_classifier'],
+                       "Train/train_loss_box_reg": loss_dict_reduced['loss_box_reg'],
+                       "Train/train_loss_mask": loss_dict_reduced['loss_mask'],
+                       "Train/train_loss_objectness": loss_dict_reduced['loss_objectness'],
+                       "Train/train_loss_rpn_box_reg": loss_dict_reduced['loss_rpn_box_reg']})
             
         if not math.isfinite(loss_value):
             print("Loss is {}, stopping training".format(loss_value))
@@ -59,8 +60,8 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, lo
         if lr_scheduler is not None:
             lr_scheduler.step()
 
-        metric_logger.update(loss=losses_reduced, **loss_dict_reduced)
-        metric_logger.update(lr=optimizer.param_groups[0]["lr"])
+        # metric_logger.update(loss=losses_reduced, **loss_dict_reduced)
+        # metric_logger.update(lr=optimizer.param_groups[0]["lr"])
 
 
 def _get_iou_types(model):

@@ -379,18 +379,18 @@ def evaluate_hyper(model, data_loader, device, log_wandb):
     torch.set_num_threads(n_threads)
     return loss
 
-def evaluate_hyper_custom(model, data_loader, device, log_wandb):
+def evaluate_hyper_custom(model, data_loader_test, device, log_wandb):
     n_threads = torch.get_num_threads()
     # FIXME remove this and make paste_masks_in_image run on the GPU
     torch.set_num_threads(1)
-    metric_logger = utils.MetricLogger(delimiter="  ")
-    header = 'Test:'
+    # metric_logger = utils.MetricLogger(delimiter="  ")
+    # header = 'Test:'
 
     model.eval()
 
     metrics_custom_list = []
 
-    for images, targets in tqdm(metric_logger.log_every(data_loader, 100, header), desc="Evaluating"):
+    for images, targets in tqdm(data_loader_test, desc="Evaluating (image)", total=len(data_loader_test)):
         images = list(image.to(device) for image in images)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
@@ -406,12 +406,19 @@ def evaluate_hyper_custom(model, data_loader, device, log_wandb):
         ground_truth_mask = np.array(ground_truth_mask)
 
         # merge all pred_masks into one pred_mask
-        pred_mask = np.max(pred_masks, axis=0)
+        if len(pred_masks.shape) > 2:
+            pred_mask = np.max(pred_masks, axis=0)
+        else:
+            pred_mask = pred_masks
 
-        # merge all pred_masks_binary into one pred_mask_binary
-        pred_mask_binary = np.zeros((pred_masks_binary.shape[1], pred_masks_binary.shape[2]))
-        for i in range(pred_masks_binary.shape[0]):
-            pred_mask_binary += pred_masks_binary[i,:,:]
+        # if pred_masks_binary has 3 dimensions, take the 2nd and 3rd, else take the 1st and 2nd
+        pred_mask_binary = np.zeros((pred_masks_binary.shape[len(pred_masks_binary.shape) - 2], pred_masks_binary.shape[len(pred_masks_binary.shape) - 1]))
+        # if pred_masks_binary has 3 dimensions, merge all pred_masks_binary into one pred_mask_binary
+        if len(pred_masks_binary.shape) > 2:
+            for i in range(pred_masks_binary.shape[0]):
+                pred_mask_binary += pred_masks_binary[i,:,:]
+        else:
+            pred_mask_binary = pred_masks_binary
         # convert boolean values to integers
         pred_mask_binary = pred_mask_binary.astype(int)
 
@@ -532,7 +539,7 @@ if __name__ == '__main__':
     params = {}
     params['num_epochs'] = 20
     params['learning_rates'] = [1e-3, 5e-3, 1e-2, 5e-2, 1e-1]
-    params['batch_size'] = 2
+    params['batch_size'] = 8
     params['weight_decay'] = 5e-4
     params['momentum'] = 0.9
     params['step_size'] = 3
