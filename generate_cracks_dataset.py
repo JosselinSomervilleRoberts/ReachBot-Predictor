@@ -251,7 +251,6 @@ def generate_positive_samples(output_size=128, max_size=128, min_size=32):
             )
 
         image = cv2.imread(image_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         mask = gt_masks[k]
         bboxes = get_bboxes_for_mask(mask, max_size=max_size)
         square_bboxes = get_square_bboxes(bboxes, mask, min_size=min_size)
@@ -265,7 +264,6 @@ def generate_positive_samples(output_size=128, max_size=128, min_size=32):
             cv2.imwrite(
                 os.path.join(
                     CRACKS_DATASET_FOLDER,
-                    "train",
                     "positive",
                     f"{nb_positive_samples}.png",
                 ),
@@ -273,14 +271,15 @@ def generate_positive_samples(output_size=128, max_size=128, min_size=32):
             )
             mask_cropped = curr_total_mask[bbox[1] : bbox[3], bbox[0] : bbox[2]]
             mask_resized = cv2.resize(mask_cropped, (output_size, output_size))
+            mask_palette = np.zeros((output_size, output_size))
+            mask_palette[mask_resized > 0] = 1
             cv2.imwrite(
                 os.path.join(
                     CRACKS_DATASET_FOLDER,
-                    "train",
                     "masks",
                     f"{nb_positive_samples}.png",
                 ),
-                mask_resized,
+                mask_palette,
             )
             nb_positive_samples += 1
 
@@ -334,9 +333,10 @@ def generate_negative_samples(max_samples_per_image=90, mask_size=128):
     print(f"Found {num_images} images")
 
     nb_negative_samples = 0
-
-    for i in tqdm(range(num_images)):
-        img_folder = os.path.join(LABELBOX_DATASET_FOLDER, str(i))
+    list_dirs = os.listdir(LABELBOX_DATASET_FOLDER)
+    dict_images = {i: list_dirs[i] for i in range(len(list_dirs))}
+    for i in tqdm(dict_images):
+        img_folder = os.path.join(LABELBOX_DATASET_FOLDER, str(dict_images[i]))
         classes_file = os.path.join(img_folder, "classes.txt")
 
         # Get the classes
@@ -367,7 +367,6 @@ def generate_negative_samples(max_samples_per_image=90, mask_size=128):
                     img_cropped.save(
                         os.path.join(
                             CRACKS_DATASET_FOLDER,
-                            "train",
                             "negative",
                             f"{nb_negative_samples}.png",
                         )
@@ -390,12 +389,9 @@ def generate_cracks_dataset():
     """
 
     if not os.path.exists(CRACKS_DATASET_FOLDER):
-        os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "train", "positive"))
-        os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "train", "masks"))
-        os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "train", "negative"))
-        os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "test", "positive"))
-        os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "test", "masks"))
-        os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "test", "negative"))
+        os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "positive"))
+        os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "masks"))
+        os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "negative"))
         os.makedirs(os.path.join(CRACKS_DATASET_FOLDER, "masks_boxes"))
 
     print("Generating positive samples...")
@@ -406,36 +402,36 @@ def generate_cracks_dataset():
     nb_negative_samples = generate_negative_samples()
     print(f"Generated {nb_negative_samples} negative samples")
 
-    print("Splitting the dataset into train and test...")
-    # move last 20% of positive samples to test folder
-    positive_samples = os.listdir(
-        os.path.join(CRACKS_DATASET_FOLDER, "train", "positive")
-    )
-    positive_samples.sort(key=lambda x: int(x.split(".")[0]))
-    nb_test_samples = int(len(positive_samples) * 0.2)
-    for i in range(nb_test_samples):
-        sample = positive_samples.pop()
-        os.rename(
-            os.path.join(CRACKS_DATASET_FOLDER, "train", "positive", sample),
-            os.path.join(CRACKS_DATASET_FOLDER, "test", "positive", sample),
-        )
-        os.rename(
-            os.path.join(CRACKS_DATASET_FOLDER, "train", "masks", sample),
-            os.path.join(CRACKS_DATASET_FOLDER, "test", "masks", sample),
-        )
+    # print("Splitting the dataset into train and test...")
+    # # move last 20% of positive samples to test folder
+    # positive_samples = os.listdir(
+    #     os.path.join(CRACKS_DATASET_FOLDER, "positive")
+    # )
+    # positive_samples.sort(key=lambda x: int(x.split(".")[0]))
+    # nb_test_samples = int(len(positive_samples) * 0.2)
+    # for i in range(nb_test_samples):
+    #     sample = positive_samples.pop()
+    #     os.rename(
+    #         os.path.join(CRACKS_DATASET_FOLDER, "train", "positive", sample),
+    #         os.path.join(CRACKS_DATASET_FOLDER, "test", "positive", sample),
+    #     )
+    #     os.rename(
+    #         os.path.join(CRACKS_DATASET_FOLDER, "train", "masks", sample),
+    #         os.path.join(CRACKS_DATASET_FOLDER, "test", "masks", sample),
+    #     )
 
-    # move last 20% of negative samples to test folder
-    negative_samples = os.listdir(
-        os.path.join(CRACKS_DATASET_FOLDER, "train", "negative")
-    )
-    negative_samples.sort(key=lambda x: int(x.split(".")[0]))
-    nb_test_samples = int(len(negative_samples) * 0.2)
-    for i in range(nb_test_samples):
-        sample = negative_samples.pop()
-        os.rename(
-            os.path.join(CRACKS_DATASET_FOLDER, "train", "negative", sample),
-            os.path.join(CRACKS_DATASET_FOLDER, "test", "negative", sample),
-        )
+    # # move last 20% of negative samples to test folder
+    # negative_samples = os.listdir(
+    #     os.path.join(CRACKS_DATASET_FOLDER, "train", "negative")
+    # )
+    # negative_samples.sort(key=lambda x: int(x.split(".")[0]))
+    # nb_test_samples = int(len(negative_samples) * 0.2)
+    # for i in range(nb_test_samples):
+    #     sample = negative_samples.pop()
+    #     os.rename(
+    #         os.path.join(CRACKS_DATASET_FOLDER, "train", "negative", sample),
+    #         os.path.join(CRACKS_DATASET_FOLDER, "test", "negative", sample),
+    #     )
 
     print("Done")
 
