@@ -18,6 +18,8 @@ from torch.utils.data import Dataset, DataLoader
 from evaluation.compute_metrics import compute_all_metrics, log_metrics
 import wandb
 from datetime import datetime
+import gc
+gc.enable()
 
 # This is to solve a memory leak
 # See: https://stackoverflow.com/questions/31156578/matplotlib-doesnt-release-memory-after-savefig-and-close
@@ -88,20 +90,7 @@ def load_images(class_name: str, train: bool, n: int = -1, device: Optional[str]
             set_description(pbar, description, k)
             image = cv2.imread(img_path)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  
-            # transform = ResizeLongestSide(sam_model.image_encoder.img_size)
-            # input_image = transform.apply_image(image)
-            # input_image_torch = torch.as_tensor(input_image, device=device) # sam_model.device)
-            # transformed_image = input_image_torch.permute(2, 0, 1).contiguous()[None, :, :, :]
-            # print(transformed_image.shape)
-            
-            # input_image = sam_model.preprocess(transformed_image).to(device)
-            # original_image_size = image.shape[:2]
-            # input_size = tuple(transformed_image.shape[-2:])
-
-            transformed_data[k] = image # input_image
-            # transformed_data[k]['image'] = input_image
-            # transformed_data[k]['input_size'] = input_size
-            # transformed_data[k]['original_image_size'] = original_image_size
+            transformed_data[k] = image
     return transformed_data
 
 
@@ -206,6 +195,9 @@ def show_predictions(input_image, binary_masks, gt_binary_masks, save_path):
     plt.cla() 
     plt.clf() 
     plt.close('all')
+
+    # Garbage collector to prevent memory leaks
+    gc.collect()
 
 
 def train(sam_model, args, train_dataloader, val_dataloader):
@@ -354,7 +346,7 @@ def parse_args():
     # For Logger
     parser.add_argument("--run_name", type=str, default="SAM", help="Name of the run")
     parser.add_argument("--save", type=bool, default=False, help="Whether to save to file")
-    parser.add_argument("--save_path", type=str, default="saves", help="Directory to save models and plots")
+    parser.add_argument("--save_dir", type=str, default="saves", help="Directory to save models and plots")
 
     # Usefull for AWS
     parser.add_argument("--shutdown", action="store_true", help="Whether to shutdown the instance after training")
