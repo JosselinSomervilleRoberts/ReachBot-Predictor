@@ -1,21 +1,15 @@
-from generate_finetuning_dataset import load_bbox_coords, load_gt_masks, check_if_finetuning_dataset_exists, show_box, show_mask, generate_finetuning_dataset
-from segment_anything import SamPredictor, sam_model_registry
-import configparser
-from collections import defaultdict
+from segment_anything import sam_model_registry
 import torch
 from segment_anything.utils.transforms import ResizeLongestSide
 from tqdm import tqdm
 import cv2
 import os
-from statistics import mean
 from torch.nn.functional import threshold, normalize
 import numpy as np
 import matplotlib.pyplot as plt
-from toolbox.log import Logger, print_color, sdebug, warn
+from toolbox.log import print_color
 from toolbox.aws import shutdown
 import argparse
-from PIL import Image
-import io
 
 from typing import Optional
 import glob
@@ -23,12 +17,11 @@ import nvidia_smi
 from torch.utils.data import Dataset, DataLoader
 from evaluation.compute_metrics import compute_all_metrics, log_metrics
 import wandb
-import datetime
+from datetime import datetime
 
 # This is to solve a memory leak
 # See: https://stackoverflow.com/questions/31156578/matplotlib-doesnt-release-memory-after-savefig-and-close
 import matplotlib
-from jax._src.ad_checkpoint import checkpoint_dots
 matplotlib.use('Agg')
 
 
@@ -289,7 +282,7 @@ def train(sam_model, args, train_dataloader, val_dataloader):
         if args.save_model:
             os.makedirs(checkpoint_dir, exist_ok=True)
             torch.save(sam_model.state_dict(), os.path.join(checkpoint_dir, f"epoch_{epoch}.pth"))
-        if mean(avg_metric) > best_avg_metric:
+        if avg_metric > best_avg_metric:
             best_avg_metric = avg_metric
             if args.save_model:
                 torch.save(sam_model.state_dict(), os.path.join(checkpoint_dir, "best.pth"))
@@ -372,6 +365,6 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     finetune_new(args)
-    
+
     if args.shutdown:
         shutdown()
