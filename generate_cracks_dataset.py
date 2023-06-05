@@ -251,7 +251,6 @@ def generate_positive_samples(output_size=128, max_size=128, min_size=32):
             )
 
         image = cv2.imread(image_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         mask = gt_masks[k]
         bboxes = get_bboxes_for_mask(mask, max_size=max_size)
         square_bboxes = get_square_bboxes(bboxes, mask, min_size=min_size)
