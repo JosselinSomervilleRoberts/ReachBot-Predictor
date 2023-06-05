@@ -512,11 +512,12 @@ def compute_all_metrics(
     return metrics
 
         
-def log_metrics(metrics: Union[dict, list], log_to_wandb: bool = True, step: Optional[int] = None) -> None:
+def log_metrics(metrics: Union[dict, list], log_to_wandb: bool = True, step: Optional[int] = None) -> float:
     """
     Prints the metrics.
     """
     wandb_metrics = {}
+    return_value = None
     if isinstance(metrics, dict):
         # Check if "full_mask" is in the dict
         if "full_mask" in metrics:
@@ -530,6 +531,7 @@ def log_metrics(metrics: Union[dict, list], log_to_wandb: bool = True, step: Opt
                     wandb_metrics["Avg individual masks/" + key] = val_avg_indiv
                     wandb_metrics["Std individual masks/" + key] = val_std_indiv
                     if key == "average":
+                        return_value = val
                         print_color(f" {key}: {val_full:.3f} (Indiv: {val_avg_indiv:.3f} ± {val_std_indiv:.3f})", color="bold")
                     else:
                         print(f" - {key}: {val_full:.3f} (Indiv: {val_avg_indiv:.3f} ± {val_std_indiv:.3f})")
@@ -540,6 +542,7 @@ def log_metrics(metrics: Union[dict, list], log_to_wandb: bool = True, step: Opt
                 if not "intersection" in key and not "union" in key:
                     wandb_metrics["Full image/" + key] = val
                     if key == "average":
+                        return_value = val
                         print_color(f" {key}: {val:.3f}", color="bold")
                     else:
                         print(f" - {key}: {val:.3f}")
@@ -579,6 +582,7 @@ def log_metrics(metrics: Union[dict, list], log_to_wandb: bool = True, step: Opt
             val_std_full = metrics_std_full[key]
             if not "intersection" in key and not "union" in key:
                 color = "bold" if key == "average" else None
+                if key == "average": return_value = val_full
                 if has_full_mask:
                     val_avg_indiv = metrics_avg_indiv[key]
                     val_std_indiv = metrics_std_indiv[key]
@@ -592,3 +596,5 @@ def log_metrics(metrics: Union[dict, list], log_to_wandb: bool = True, step: Opt
             wandb.log(wandb_metrics, step=step)
         else:
             wandb.log(wandb_metrics)
+
+    return return_value

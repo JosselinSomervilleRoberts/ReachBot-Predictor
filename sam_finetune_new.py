@@ -24,6 +24,12 @@ from torch.utils.data import Dataset, DataLoader
 from evaluation.compute_metrics import compute_all_metrics, log_metrics
 import wandb
 
+# This is to solve a memory leak
+# See: https://stackoverflow.com/questions/31156578/matplotlib-doesnt-release-memory-after-savefig-and-close
+import matplotlib
+matplotlib.use('Agg')
+
+
 def get_device() -> str:
     return "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -194,7 +200,7 @@ def train(sam_model, args, train_dataloader, val_dataloader):
 
     # keep track of losses
     losses = []
-    best_loss = float('inf')
+    best_avg_metric = 0
     loss_of_batch = 0
     step = 0
 
@@ -232,6 +238,11 @@ def train(sam_model, args, train_dataloader, val_dataloader):
                     plt.imshow(binary_mask.cpu().numpy())
                     plt.axis('off')
                     plt.savefig(f"./plots/epoch_{epoch}_batch_{k+1}.png")
+
+                    # This is to empty matplotlib's memory (otherwise we get a memory leak)
+                    plt.cla() 
+                    plt.clf() 
+                    plt.close('all')
                 
                 # Compute loss
                 loss = loss_fn(binary_masks, gt_binary_masks)
@@ -253,19 +264,17 @@ def train(sam_model, args, train_dataloader, val_dataloader):
                 set_description(pbar, description, k, frequency=1)
                 binary_masks, gt_binary_masks = process_batch(sam_model, data, keep_grad=False, device=device)
 
-                for i in range(args.batch_size):
+                for i in range(len(gt_binary_masks)):
                     metrics = compute_all_metrics(ground_truth=gt_binary_masks[i], prediction_binary=(binary_masks[i] / torch.max(binary_masks[i])) > 0.5)
                     list_metrics.append(metrics)
         print("")
-        log_metrics(list_metrics)
+        avg_metric: float = log_metrics(list_metrics)
         print("")    
-        
-            # l.log_value("Mean epoch loss", mean(epoch_losses), index=epoch)
 
-            # if mean(epoch_losses) < best_loss:
-            #     best_loss = mean(epoch_losses)
-            #     if save_model:
-            #         l.save_model(sam_model, f"{MODEL_TYPE}_{MODEL_NAME}_best.pth")
+        if mean(avg_metric) > best_avg_metric:
+            best_avg_metric = avg_metric
+            if args.save_model:
+                pass # TODO: Save
 
 
 def get_sam_model(model_type: str, checkpoint: Optional[str] = None, device: Optional[str] = None):
