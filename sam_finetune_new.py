@@ -23,10 +23,12 @@ import nvidia_smi
 from torch.utils.data import Dataset, DataLoader
 from evaluation.compute_metrics import compute_all_metrics, log_metrics
 import wandb
+import datetime
 
 # This is to solve a memory leak
 # See: https://stackoverflow.com/questions/31156578/matplotlib-doesnt-release-memory-after-savefig-and-close
 import matplotlib
+from jax._src.ad_checkpoint import checkpoint_dots
 matplotlib.use('Agg')
 
 
@@ -192,6 +194,27 @@ def process_batch(sam_model, data, keep_grad: bool, device: str) -> torch.Tensor
     return binary_masks, gt_binary_masks
 
 
+def show_predictions(input_image, binary_masks, gt_binary_masks, save_path):
+    plt.figure(figsize=(20,20))
+    plt.subplot(1, 3, 1)
+    plt.imshow(input_image[0].permute(0, 1, 2).detach().cpu().numpy())
+    plt.axis('off')
+    plt.subplot(1, 3, 2)
+    plt.imshow(gt_binary_masks[0].detach().cpu().numpy())
+    plt.axis('off')
+    plt.subplot(1, 3, 3)
+    binary_mask = binary_masks[0].detach()
+    binary_mask = (binary_mask / torch.max(binary_mask)) > 0.5
+    plt.imshow(binary_mask.cpu().numpy())
+    plt.axis('off')
+    plt.savefig(save_path)
+
+    # This is to empty matplotlib's memory (otherwise we get a memory leak)
+    plt.cla() 
+    plt.clf() 
+    plt.close('all')
+
+
 def train(sam_model, args, train_dataloader, val_dataloader):
     # Setup optimizer, loss function
     optimizer = torch.optim.Adam(sam_model.mask_decoder.parameters(), lr=args.lr, weight_decay=args.weight_decay)
@@ -203,6 +226,14 @@ def train(sam_model, args, train_dataloader, val_dataloader):
     best_avg_metric = 0
     loss_of_batch = 0
     step = 0
+
+    # Create directory to save plots and checkpoints
+    # Adds the date and time to the run_name
+    run_name = args.run_name + "_" + datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+    save_dir = os.path.join(args.save_dir, run_name)
+    plot_dir = os.path.join(save_dir, "plots")
+    os.makedirs(save_dir, exist_ok=True)
+    os.makedirs(plot_dir, exist_ok=True)
 
     optimizer.zero_grad()
     for epoch in range(args.num_epochs):
@@ -216,33 +247,10 @@ def train(sam_model, args, train_dataloader, val_dataloader):
                 binary_masks, gt_binary_masks = process_batch(sam_model, data, keep_grad=True, device=device)
                 step += args.batch_size
 
-                # Plot the gt_binary_mask and binary_mask
-                # if k % 100 == 0:
-                #     l.log_image(f"Input image {k}", input_image[0])
-                #     l.log_image(f"Ground truth mask {k}", gt_binary_mask[0][0])
-                #     l.log_image(f"Predicted mask {k}", binary_mask[0][0])
-
                 # Plot the gt_binary_mask and binary_mask using matplotlib
                 if args.plot_every_batch > 0 and k % args.plot_every_batch == 0:
-                    input_image = data[0]
-                    plt.figure(figsize=(20,20))
-                    plt.subplot(1, 3, 1)
-                    plt.imshow(input_image[0].permute(0, 1, 2).detach().cpu().numpy())
-                    plt.axis('off')
-                    plt.subplot(1, 3, 2)
-                    plt.imshow(gt_binary_masks[0].detach().cpu().numpy())
-                    plt.axis('off')
-                    plt.subplot(1, 3, 3)
-                    binary_mask = binary_masks[0].detach()
-                    binary_mask = (binary_mask / torch.max(binary_mask)) > 0.5
-                    plt.imshow(binary_mask.cpu().numpy())
-                    plt.axis('off')
-                    plt.savefig(f"./plots/epoch_{epoch}_batch_{k+1}.png")
-
-                    # This is to empty matplotlib's memory (otherwise we get a memory leak)
-                    plt.cla() 
-                    plt.clf() 
-                    plt.close('all')
+                    img_save_path = os.path.join(plot_dir, f"train_epoch_{epoch}_batch_{k}.png")
+                    show_predictions(data[0], binary_masks, gt_binary_masks, img_save_path)
                 
                 # Compute loss
                 loss = loss_fn(binary_masks, gt_binary_masks)
@@ -264,6 +272,11 @@ def train(sam_model, args, train_dataloader, val_dataloader):
                 set_description(pbar, description, k, frequency=1)
                 binary_masks, gt_binary_masks = process_batch(sam_model, data, keep_grad=False, device=device)
 
+                # Plot the gt_binary_mask and binary_mask using matplotlib
+                if args.plot_every_batch > 0 and k % args.plot_every_batch == 0:
+                    img_save_path = os.path.join(plot_dir, f"val_epoch_{epoch}_batch_{k}.png")
+                    show_predictions(data[0], binary_masks, gt_binary_masks, img_save_path)
+
                 for i in range(len(gt_binary_masks)):
                     metrics = compute_all_metrics(ground_truth=gt_binary_masks[i], prediction_binary=(binary_masks[i] / torch.max(binary_masks[i])) > 0.5)
                     list_metrics.append(metrics)
@@ -271,10 +284,15 @@ def train(sam_model, args, train_dataloader, val_dataloader):
         avg_metric: float = log_metrics(list_metrics)
         print("")    
 
+        # Creates dir checkpoints in save_dir if it doesn't exist
+        checkpoint_dir = os.path.join(save_dir, "checkpoints")
+        if args.save_model:
+            os.makedirs(checkpoint_dir, exist_ok=True)
+            torch.save(sam_model.state_dict(), os.path.join(checkpoint_dir, f"epoch_{epoch}.pth"))
         if mean(avg_metric) > best_avg_metric:
             best_avg_metric = avg_metric
             if args.save_model:
-                pass # TODO: Save
+                torch.save(sam_model.state_dict(), os.path.join(checkpoint_dir, "best.pth"))
 
 
 def get_sam_model(model_type: str, checkpoint: Optional[str] = None, device: Optional[str] = None):
@@ -302,7 +320,7 @@ def get_sam_model(model_type: str, checkpoint: Optional[str] = None, device: Opt
 
 def finetune_new(args):
     nvidia_smi.nvmlInit()
-    wandb.init(project=f"Reachbot-{args.class_name}", name=f"SAM-{args.model_type}")
+    wandb.init(project=f"Reachbot-{args.class_name}", name=args.run_name)
 
     # Load model
     print_color("\nLoading model...", color="bold")
@@ -341,10 +359,9 @@ def parse_args():
     parser.add_argument("--plot_every_batch", type=int, default=50, help="Plot predictions every")
 
     # For Logger
-    parser.add_argument("--verbose", type=bool, default=False, help="Whether to print to console")
+    parser.add_argument("--run_name", type=str, default="SAM", help="Name of the run")
     parser.add_argument("--save", type=bool, default=False, help="Whether to save to file")
-    parser.add_argument("--save_path", type=str, default="logs", help="Directory to save logs to")
-    parser.add_argument("--tensorboard", type=bool, default=True, help="Whether to use tensorboard")
+    parser.add_argument("--save_path", type=str, default="saves", help="Directory to save models and plots")
 
     # Usefull for AWS
     parser.add_argument("--shutdown", action="store_true", help="Whether to shutdown the instance after training")
@@ -352,87 +369,9 @@ def parse_args():
     return parser.parse_args()
 
 
-# def compare_untrained_and_trained(class_name: str, trained_model, index: int):
-#     # Load the model
-#     device = "cuda" if torch.cuda.is_available() else "cpu"
-#     MODEL_TYPE = config["SAM"]["MODEL_TYPE"]
-#     MODEL_NAME = config["SAM"]["MODEL_NAME"]
-#     SAVE_FOLDER = config["PATHS"]["SAVE_MDOEL"]
-#     sam_model_orig = sam_model_registry[MODEL_TYPE](checkpoint=MODEL_NAME)
-#     sam_model_orig = sam_model_orig.to(device)
-
-#     # Set the two models
-#     predictor_tuned = SamPredictor(trained_model)
-#     predictor_original = SamPredictor(sam_model_orig)
-
-#     # Load data
-#     bbox_coords: dict = load_bbox_coords(class_name)
-#     ground_truth_masks: dict = load_gt_masks(class_name)
-#     keys = list(bbox_coords.keys())
-
-#     # Display result on new data
-#     k = keys[index]
-#     img_folder = os.path.join(FINETUNE_DATA_FOLDER, class_name, "images", str(k) + ".png")
-#     image = cv2.imread(img_folder)
-#     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-#     predictor_tuned.set_image(image)
-#     predictor_original.set_image(image)
-
-#     input_bbox = np.array(bbox_coords[k])
-
-#     masks_tuned, _, _ = predictor_tuned.predict(
-#         point_coords=None,
-#         box=input_bbox,
-#         multimask_output=False,
-#     )
-
-#     masks_orig, _, _ = predictor_original.predict(
-#         point_coords=None,
-#         box=input_bbox,
-#         multimask_output=False,
-#     )
-
-#     _, axs = plt.subplots(1, 3, figsize=(16, 4))
-
-#     axs[0].imshow(image)
-#     show_mask(masks_tuned, axs[0])
-#     show_box(input_bbox, axs[0])
-#     axs[0].set_title('Tuned Model', fontsize=26)
-#     axs[0].axis('off')
-
-#     axs[1].imshow(image)
-#     show_mask(masks_orig, axs[1])
-#     show_box(input_bbox, axs[1])
-#     axs[1].set_title('Untuned Model', fontsize=26)
-#     axs[1].axis('off')
-
-#     axs[2].imshow(image)
-#     show_mask(ground_truth_masks[k], axs[2])
-#     show_box(input_bbox, axs[2])
-#     axs[2].set_title('Ground Truth', fontsize=26)
-#     axs[2].axis('off')
-
-#     img_buf = io.BytesIO()
-#     plt.savefig(img_buf, format='png')
-#     im = Image.open(img_buf)
-#     l.log_image(f"Comparison", im)
-#     plt.close()
-
 if __name__ == "__main__":
     args = parse_args()
     finetune_new(args)
-    #l = Logger(args.verbose, args.save, args.save_path, args.tensorboard)
-    # losses, trained_model = finetune(args.class_name, args.lr, args.weight_decay, args.num_epochs, args.save_model, args.n_train, args.gradient_accumulation_steps)
-
-    # # Compare on training data
-    # for index in range(min(args.n_train, args.n_test)):
-    #     compare_untrained_and_trained(args.class_name, trained_model, index)
-
-    # # Compare on test data
-    # for index in range(args.n_train, args.n_train + args.n_test):
-    #     compare_untrained_and_trained(args.class_name, trained_model, index)
-
-    # Shutdown EC2 instance
+    
     if args.shutdown:
         shutdown()
