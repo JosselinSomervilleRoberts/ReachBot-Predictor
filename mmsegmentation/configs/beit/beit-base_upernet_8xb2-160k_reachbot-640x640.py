@@ -1,46 +1,48 @@
 _base_ = [
-    '../_base_/models/upernet_beit.py', "../_base_/datasets/reachbot.py",
-    '../_base_/default_runtime.py', "../_base_/schedules/schedule_80k.py"
+    "../_base_/models/upernet_beit.py",
+    "../_base_/datasets/reachbot.py",
+    "../_base_/default_runtime.py",
+    "../_base_/schedules/schedule_80k.py",
 ]
-crop_size = (512, 512)
+crop_size = (640, 640)
 data_preprocessor = dict(size=crop_size)
 model = dict(
     data_preprocessor=data_preprocessor,
-    pretrained='pretrain/beit_base_patch16_224_pt22k_ft22k.pth',
+    pretrained="pretrain/beit_base_patch16_224_pt22k_ft22k.pth",
     decode_head=dict(num_classes=2),
     auxiliary_head=dict(num_classes=2),
-    test_cfg=dict(mode='slide', crop_size=(512, 512), stride=(426, 426)))
+    test_cfg=dict(mode="slide", crop_size=(640, 640), stride=(426, 426)),
+)
 
 optim_wrapper = dict(
     _delete_=True,
-    type='OptimWrapper',
-    optimizer=dict(
-        type='AdamW', lr=3e-5, betas=(0.9, 0.999), weight_decay=0.05),
-    constructor='LayerDecayOptimizerConstructor',
+    type="AmpOptimWrapper",
+    optimizer=dict(type="AdamW", lr=5e-5, betas=(0.9, 0.999), weight_decay=0.05),
+    constructor="LayerDecayOptimizerConstructor",
     paramwise_cfg=dict(num_layers=12, layer_decay_rate=0.9),
-    accumulative_counts=2)
+    accumulative_counts=2,
+)
 
 param_scheduler = [
+    dict(type="LinearLR", start_factor=1e-6, by_epoch=False, begin=0, end=1500),
     dict(
-        type='LinearLR', start_factor=1e-6, by_epoch=False, begin=0, end=1500),
-    dict(
-        type='PolyLR',
+        type="PolyLR",
         power=1.0,
         begin=1500,
         end=160000,
         eta_min=0.0,
         by_epoch=False,
-    )
+    ),
 ]
 
-train_cfg = dict(type="IterBasedTrainLoop", max_iters=20000, val_interval=1000)
+train_cfg = dict(type="IterBasedTrainLoop", max_iters=20000, val_interval=4000)
 val_cfg = dict(type="ValLoop")
 test_cfg = dict(type="TestLoop")
 default_hooks = dict(
     timer=dict(type="IterTimerHook"),
-    logger=dict(type="LoggerHook", interval=10, log_metric_by_epoch=False),
+    logger=dict(type="LoggerHook", interval=50, log_metric_by_epoch=False),
     param_scheduler=dict(type="ParamSchedulerHook"),
-    checkpoint=dict(type="CheckpointHook", by_epoch=False, interval=1000),
+    checkpoint=dict(type="CheckpointHook", by_epoch=False, interval=4000),
     sampler_seed=dict(type="DistSamplerSeedHook"),
     visualization=dict(type="SegVisualizationHook", draw=True, interval=5),
 )
