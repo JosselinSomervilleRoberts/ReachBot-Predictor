@@ -604,8 +604,8 @@ def hyperparameter_tuning(params, log_wandb):
     # Save the best model
     torch.save(best_model.state_dict(), f"./models/maskrcnn_finetuned_model_hyper_2_epochs_{num_epochs}_learning_rate_{best_learning_rate}.pt")
 
-    from toolbox.aws import shutdown
-    shutdown()
+    # from toolbox.aws import shutdown
+    # shutdown()
 
 
 
@@ -615,7 +615,7 @@ if __name__ == '__main__':
 
     params = {}
     params['num_epochs'] = 30
-    params['learning_rates'] = [1e-3]
+    params['learning_rates'] = [1e-4]
     params['batch_size'] = 8
     params['weight_decay'] = 5e-4
     params['momentum'] = 0.9
