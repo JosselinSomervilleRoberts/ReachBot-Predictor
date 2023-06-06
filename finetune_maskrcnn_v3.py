@@ -166,17 +166,17 @@ def get_transform(train):
 
 def datasets_and_dataloaders(batch_size):
     # use our dataset and defined transformations
-    dataset = RocksDataset(root=MASKRCNN_DATASET_FOLDER, transforms=get_transform(train=True))
-    dataset_test = RocksDataset(root=MASKRCNN_DATASET_FOLDER, transforms=get_transform(train=False))
+    dataset = RocksDataset(root="./datasets/boulders/full/train", transforms=get_transform(train=True))
+    dataset_test = RocksDataset(root="./datasets/boulders/full/val", transforms=get_transform(train=False))
 
     # split the dataset in train and test set
     torch.manual_seed(10)
     np.random.seed(10)
-    train_size = int(0.8 * len(dataset))
-    test_size = len(dataset) - train_size
-    indices = np.random.permutation(range(len(dataset)))
-    dataset = torch.utils.data.Subset(dataset, indices[:-test_size])
-    dataset_test = torch.utils.data.Subset(dataset_test, indices[-test_size:])
+    # train_size = int(0.8 * len(dataset))
+    # test_size = len(dataset) - train_size
+    # indices = np.random.permutation(range(len(dataset)))
+    # dataset = torch.utils.data.Subset(dataset, indices[:-test_size])
+    # dataset_test = torch.utils.data.Subset(dataset_test, indices[-test_size:])
 
     # define training and validation data loaders
     data_loader = torch.utils.data.DataLoader(
@@ -616,8 +616,8 @@ if __name__ == '__main__':
     params = {}
     params['num_epochs'] = 30
     params['learning_rates'] = [1e-4]
-    params['batch_size'] = 8
-    params['weight_decay'] = 5e-4
+    params['batch_size'] = 2
+    params['weight_decay'] = 1e-4
     params['momentum'] = 0.9
     params['step_size'] = 3
     params['gamma'] = 0.1
