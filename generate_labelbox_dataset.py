@@ -1,31 +1,34 @@
+import configparser
+import os
+from io import BytesIO
+from typing import List
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
 import requests
 from PIL import Image
-from io import BytesIO
+from toolbox.printing import ldebug, warn
 from tqdm import tqdm
-import configparser
-import cv2
-import numpy as np
-import matplotlib.pyplot as plt
-import os
-from typing import List
-from toolbox.printing import warn, ldebug
 
 # config
 config = configparser.ConfigParser()
-config.read('config.ini')
+config.read("config.ini")
 LABELBOX_DATASET_FOLDER = config["PATHS"]["LABELBOX_DATASET"]
-LB_API_KEY = config['SECRETS']['LABELBOX_API_KEY']
-LB_PROJECT_ID = config['SECRETS']['LABELBOX_PROJECT_ID']
+LB_API_KEY = config["SECRETS"]["LABELBOX_API_KEY"]
+LB_PROJECT_ID = config["SECRETS"]["LABELBOX_PROJECT_HM_ID"]
 CLASS_TO_COLOR = {
-        "edge": [int(c) for c in config["DISPLAY"]["COLOR_EDGE"].split(' ')],
-        "crack": [int(c) for c in config["DISPLAY"]["COLOR_CRACK"].split(' ')],
-        "boulder": [int(c) for c in config["DISPLAY"]["COLOR_BOULDER"].split(' ')],
-        "rough_patch": [int(c) for c in config["DISPLAY"]["COLOR_ROUGH_PATCH"].split(' ')],
-    }
+    "edge": [int(c) for c in config["DISPLAY"]["COLOR_EDGE"].split(" ")],
+    "crack": [int(c) for c in config["DISPLAY"]["COLOR_CRACK"].split(" ")],
+    "boulder": [int(c) for c in config["DISPLAY"]["COLOR_BOULDER"].split(" ")],
+    "rough_patch": [int(c) for c in config["DISPLAY"]["COLOR_ROUGH_PATCH"].split(" ")],
+}
+
 
 def check_if_labelbox_dataset_exists() -> bool:
     """Checks if the dataset already exists."""
     return os.path.exists(LABELBOX_DATASET_FOLDER)
+
 
 def get_masks(image_number: int) -> list:
     """Gets the masks for a given image number."""
@@ -37,6 +40,7 @@ def get_masks(image_number: int) -> list:
             masks.append(mask)
     return masks
 
+
 def get_classes(image_number: int) -> List[str]:
     """Gets the classes for a given image number."""
     classes = []
@@ -44,6 +48,7 @@ def get_classes(image_number: int) -> List[str]:
     with open(os.path.join(img_folder, "classes.txt"), "r") as f:
         classes = f.read().split("\n")
     return classes
+
 
 def generate_labelbox_dataset(max_try: int = 10) -> None:
     import labelbox
@@ -54,18 +59,19 @@ def generate_labelbox_dataset(max_try: int = 10) -> None:
 
     print("Downloading labels...")
     labels = project.label_generator()
-    labels = project.export_labels(download = True)
+    labels = project.export_labels(download=True)
     print("Done")
 
     # Create folder name "dataset" if it doesn't exist
     import os
+
     if not os.path.exists(LABELBOX_DATASET_FOLDER):
         os.makedirs(LABELBOX_DATASET_FOLDER)
 
     # Download all images and save them in the "dataset" folder
     print("Downloading images...")
     for i in tqdm(range(len(labels))):
-        x = labels[i]['Labeled Data']
+        x = labels[i]["Labeled Data"]
         response = requests.get(x)
         img = Image.open(BytesIO(response.content))
 
@@ -82,9 +88,9 @@ def generate_labelbox_dataset(max_try: int = 10) -> None:
 
         # Get all masks
         classes = []
-        objects = labels[i]['Label']['objects']
+        objects = labels[i]["Label"]["objects"]
         for j, object in enumerate(objects):
-            instanceURI = object['instanceURI']
+            instanceURI = object["instanceURI"]
             idx_try = 0
             response_code = 0
             response = None
@@ -98,19 +104,21 @@ def generate_labelbox_dataset(max_try: int = 10) -> None:
                         img = Image.eval(img, lambda a: 255 - a)
                         img.putalpha(255)
                         img.save(img_folder + "/mask_" + str(j) + ".png")
-                        classes.append(objects[j]['title'])
+                        classes.append(objects[j]["title"])
                     else:
-                        warn(f"Response code {response_code} for image {i}, try {idx_try}")
+                        warn(
+                            f"Response code {response_code} for image {i}, try {idx_try}"
+                        )
                         ldebug(response)
                 except Exception as e:
                     warn(f"Exception {e} for image {i}, try {idx_try}")
                     ldebug(response)
 
-
         # Save classes
         with open(img_folder + "/classes.txt", "w") as f:
             f.write("\n".join(classes))
     print("Done")
+
 
 def show_img_with_all_masks(image_number: int) -> None:
     """Shows the image with all the masks on top of it."""
@@ -126,18 +134,19 @@ def show_img_with_all_masks(image_number: int) -> None:
     for i, mask in enumerate(masks):
         # Draw the mask on top of the image as class_to_color[classes[i]] with an alpha of 0.5 where
         # the mask is not 0.
-        mask_img = np.array(mask)[:,:,0]
+        mask_img = np.array(mask)[:, :, 0]
         color = CLASS_TO_COLOR[classes[i]]
         color.append(0.5)
-        
+
         # Apply the color where mask_img is 0 with alpha blending
-        img[mask_img == 0] = img[mask_img == 0] * (1 - color[3]) + np.array(color[:3]) * color[3]
-        
+        img[mask_img == 0] = (
+            img[mask_img == 0] * (1 - color[3]) + np.array(color[:3]) * color[3]
+        )
 
     # Show the image with all the masks on top of it
-    plt.figure(figsize=(10,10))
+    plt.figure(figsize=(10, 10))
     plt.imshow(img)
-    plt.axis('off')
+    plt.axis("off")
     plt.show()
 
 
