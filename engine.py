@@ -12,7 +12,7 @@ import wandb
 from tqdm import tqdm
 
 
-def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, log_wandb):
+def train_one_epoch(model, optimizer, data_loader, device, epoch, log_wandb):
     model.train()
     # metric_logger = utils.MetricLogger(delimiter="  ")
     # metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
@@ -40,8 +40,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, lo
         loss_value = losses_reduced.item()
 
         if log_wandb:
-            wandb.log({"Epoch": epoch,
-                       "Train/train_loss": loss_value,
+            wandb.log({"Train/train_loss": loss_value,
                        "Train/train_loss_classifier": loss_dict_reduced['loss_classifier'],
                        "Train/train_loss_box_reg": loss_dict_reduced['loss_box_reg'],
                        "Train/train_loss_mask": loss_dict_reduced['loss_mask'],

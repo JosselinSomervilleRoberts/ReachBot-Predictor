@@ -161,6 +161,7 @@ def get_transform(train):
         # during training, randomly flip the training images
         # and ground-truth for data augmentation
         transforms.append(T.RandomHorizontalFlip(0.5))
+        transforms.append(T.RandomVerticalFlip(0.5))
     return T.Compose(transforms)
 
 def datasets_and_dataloaders(batch_size):
@@ -380,7 +381,57 @@ def evaluate_hyper(model, data_loader, device, log_wandb):
     torch.set_num_threads(n_threads)
     return loss
 
-def evaluate_hyper_custom(model, data_loader_test, device, log_wandb):
+
+def treat_predictions(predictions, model, confidence, filtered):
+    pred_masks = (predictions[0]['masks']).squeeze().detach().cpu().numpy()
+    pred_masks_binary = (predictions[0]['masks']>0.5).squeeze().detach().cpu().numpy()
+
+    if filtered:
+        confidence = np.max(predictions[0]['scores'].detach().cpu().numpy())
+        confidence /= 2
+        pred_score = list(predictions[0]['scores'].detach().cpu().numpy())
+        pred_t = [pred_score.index(x) for x in pred_score if x>confidence]
+
+        if pred_t != []:
+            pred_t = pred_t[-1]
+            pred_masks = pred_masks[:pred_t+1]
+            pred_masks_binary = pred_masks_binary[:pred_t+1]
+        else:
+            pred_masks = np.zeros_like(pred_masks)
+            pred_masks_binary = np.zeros_like(pred_masks_binary)
+
+
+    if pred_masks.shape[0] == 0:
+        pred_mask = np.zeros((pred_masks.shape[1], pred_masks.shape[2]))
+    elif len(pred_masks.shape) > 2:
+        # merge all pred_masks into one pred_mask
+        pred_mask = np.max(pred_masks, axis=0)
+    else:
+        pred_mask = pred_masks
+    
+        
+    if pred_masks_binary.shape[0] == 0:
+        pred_mask_binary = np.zeros((pred_masks_binary.shape[1], pred_masks_binary.shape[2]))
+    elif len(pred_masks_binary.shape) > 2:
+        # merge all pred_masks_binary into one pred_mask_binary
+        pred_mask_binary = np.max(pred_masks_binary, axis=0)
+        # convert boolean values to integers
+        pred_mask_binary = pred_mask_binary.astype(int)
+    else:
+        pred_mask_binary = pred_masks_binary
+
+    return pred_mask, pred_mask_binary
+
+
+def treat_target(targets, index):
+    ground_truth_mask = targets[index]['masks'].squeeze().detach().cpu().numpy()
+    # merge all ground_truth_mask channels into one ground_truth_mask
+    if len(ground_truth_mask.shape) > 2:
+        ground_truth_mask = np.max(ground_truth_mask, axis=0)
+    return ground_truth_mask
+
+
+def evaluate_hyper_custom(model, confidence, data_loader_test, epoch, device, log_wandb):
     n_threads = torch.get_num_threads()
     # FIXME remove this and make paste_masks_in_image run on the GPU
     torch.set_num_threads(1)
@@ -397,39 +448,17 @@ def evaluate_hyper_custom(model, data_loader_test, device, log_wandb):
 
         predictions = model(images)
 
-        pred_masks = (predictions[0]['masks']).squeeze().detach().cpu().numpy()
-        pred_masks = np.array(pred_masks)
+        pred_mask, pred_mask_binary = treat_predictions(predictions, model, confidence, filtered=True)
 
-        pred_masks_binary = (predictions[0]['masks']>0.5).squeeze().detach().cpu().numpy()
-        pred_masks_binary = np.array(pred_masks_binary)
-
-        ground_truth_mask = targets[0]['masks'].squeeze().detach().cpu().numpy()
-        ground_truth_mask = np.array(ground_truth_mask)
-
-        if pred_masks.shape[0] == 0:
-            pred_mask = np.zeros(pred_masks.shape[1], pred_masks.shape[2])
-            pred_mask_binary = np.zeros(pred_masks.shape[1], pred_masks.shape[2])
-        else:
-            # merge all pred_masks into one pred_mask
-            pred_mask = np.max(pred_masks, axis=0)
-            
-            # merge all pred_masks_binary into one pred_mask_binary
-            pred_mask_binary = np.zeros((pred_masks_binary.shape[1], pred_masks_binary.shape[2]))
-            for i in range(pred_masks_binary.shape[0]):
-                pred_mask_binary += pred_masks_binary[i,:,:]
-            # convert boolean values to integers
-            pred_mask_binary = pred_mask_binary.astype(int)
-
-        # merge all ground_truth_mask channels into one ground_truth_mask
-        if len(ground_truth_mask.shape) > 2:
-            ground_truth_mask = np.max(ground_truth_mask, axis=0)
+        ground_truth_mask = treat_target(targets, 0)
 
         metrics_custom_list.append(compute_all_metrics(ground_truth=ground_truth_mask,
                                                     prediction=pred_mask,
                                                     prediction_binary=pred_mask_binary,
                                                     threshold=0.5))
 
-    log_metrics(metrics_custom_list, log_wandb)
+
+    log_metrics(metrics=metrics_custom_list, log_to_wandb=log_wandb, step=epoch)
 
     torch.set_num_threads(n_threads)
     # return the average of metrics_custom['average'] over all metrics_custom dictionaries in metrics_custom_list
@@ -438,7 +467,7 @@ def evaluate_hyper_custom(model, data_loader_test, device, log_wandb):
             
 
 # Hyperparaneter tuning: for number of epochs and learning rate
-def hyperparameter_tuning(params, log_wandb):
+def hyperparameter_tuning(params, confidence, log_wandb):
     # from toolbox.aws import shutdown
 
     # get the parameters
@@ -458,7 +487,7 @@ def hyperparameter_tuning(params, log_wandb):
     # our dataset has two classes only - background and boulder
     num_classes = 2
 
-    best_loss = 0
+    best_avg = 0
 
     for learning_rate in learning_rates:
 
@@ -501,20 +530,66 @@ def hyperparameter_tuning(params, log_wandb):
                 }
             )
 
+            wandb.define_metric("epoch")
+
         print_color(f'\n----------Tuning for learning_rate={learning_rate}', color='purple')
         
         # train for num_epochs epochs
         for epoch in range(num_epochs):
             print_color(f"\n----------Epoch {epoch+1}/{num_epochs}", color="blue")
             # train for one epoch, printing every 10 iterations
-            train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10, log_wandb=log_wandb)
+            train_one_epoch(model, optimizer, data_loader, device, epoch, log_wandb)
             # update the learning rate
             # lr_scheduler.step()
             # evaluate on the test dataset
-            loss = evaluate_hyper_custom(model, data_loader_test, device, log_wandb)
+            avg = evaluate_hyper_custom(model, confidence, data_loader_test, epoch, device, log_wandb)
+            
+            # log the model predicitons for the last epoch in wandb
+            if log_wandb:
+                if epoch == num_epochs-1:
+                    # get all images and targets in the test dataset
+                    images, targets = [], []
+                    for i in range(len(dataset_test)):
+                        images.append(dataset_test[i][0])
+                        targets.append(dataset_test[i][1])
+                    
+                    # move images and targets to the right device
+                    images = list(image.to(device) for image in images)
+                    targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+
+                    # get the model predictions and ground truth masks
+                    model.eval()
+                    pred_masks, pred_masks_binary = [], []
+                    ground_truth_masks = []
+                    with torch.no_grad():
+                        for i in range(len(images)):
+                            predictions = model([images[i]])
+                            pred_mask, pred_mask_binary = treat_predictions(predictions, model, confidence, filtered=True)
+                            ground_truth_mask = treat_target(targets, i)
+                            pred_masks.append(pred_mask)
+                            pred_masks_binary.append(pred_mask_binary)
+                            ground_truth_masks.append(ground_truth_mask)
+
+                    # convert the images to numpy arrays
+                    images = [image.cpu().numpy().transpose(1,2,0) for image in images]
+
+                    # create a list of wandb images
+                    wandb_images = [wandb.Image(image, caption=f"Image {index}", masks={
+                        "predictions": {
+                            "mask_data": pred_masks_binary[index],
+                            "class_labels": {0: CLASS_NAMES[0], 1: CLASS_NAMES[1]}
+                        },
+                        "ground_truth": {
+                            "mask_data": ground_truth_masks[index],
+                            "class_labels": {0: CLASS_NAMES[0], 1: CLASS_NAMES[1]}
+                        }
+                    }) for index, image in enumerate(images)]
+
+                    wandb.log({f"Images/images": wandb_images})
+
             # save the best model
-            if loss > best_loss:
-                best_loss = loss
+            if avg > best_avg:
+                best_avg = avg
                 best_model = model
                 best_learning_rate = learning_rate
 
@@ -533,12 +608,14 @@ if __name__ == '__main__':
     log_wandb = True
 
     params = {}
-    params['num_epochs'] = 20
-    params['learning_rates'] = [1e-3, 5e-3, 1e-2, 5e-2, 1e-1]
+    params['num_epochs'] = 30
+    params['learning_rates'] = [1e-3]
     params['batch_size'] = 8
     params['weight_decay'] = 5e-4
     params['momentum'] = 0.9
     params['step_size'] = 3
     params['gamma'] = 0.1
 
-    hyperparameter_tuning(params, log_wandb)
+    confidence = 0.5
+
+    hyperparameter_tuning(params, confidence, log_wandb)

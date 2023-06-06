@@ -589,6 +589,5 @@ def log_metrics(metrics: Union[dict, list], log_to_wandb: bool = True, step: Opt
     # Log the metrics to wandb
     if log_to_wandb:
         if step is not None:
-            wandb.log(wandb_metrics, step=step)
-        else:
-            wandb.log(wandb_metrics)
+            wandb_metrics["epoch"] = step
+        wandb.log(wandb_metrics)
