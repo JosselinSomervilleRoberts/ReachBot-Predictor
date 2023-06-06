@@ -477,6 +477,7 @@ def hyperparameter_tuning(params, log_wandb):
     momentum = params['momentum']
     gamma = params['gamma']
     step_size = params['step_size']
+    optimizer_name = params['optimizer_name']
 
     # get the data loaders
     dataset, dataset_test, data_loader, data_loader_test = datasets_and_dataloaders(batch_size)
@@ -497,8 +498,14 @@ def hyperparameter_tuning(params, log_wandb):
 
         # construct an optimizer with the default parameters
         params = [p for p in model.parameters() if p.requires_grad]
-        optimizer = torch.optim.SGD(params, lr=learning_rate,
-                                    momentum=momentum, weight_decay=weight_decay)
+        if optimizer_name == 'SGD':
+            optimizer = torch.optim.SGD(params, lr=learning_rate,
+                                        momentum=momentum, weight_decay=weight_decay)
+        elif optimizer_name == 'Adam':
+            optimizer = torch.optim.Adam(params, lr=learning_rate,
+                                        weight_decay=weight_decay)
+        else:
+            print_color("\nplease enter a valid optimizer name", color="red")
 
         # and a learning rate scheduler which decreases the learning rate by
         # 10x every 3 epochs
@@ -614,5 +621,6 @@ if __name__ == '__main__':
     params['momentum'] = 0.9
     params['step_size'] = 3
     params['gamma'] = 0.1
+    params['optimizer_name'] = 'Adam' # 'SGD', 'Adam'
 
     hyperparameter_tuning(params, log_wandb)
