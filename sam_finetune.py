@@ -66,7 +66,7 @@ def process_batch(sam_model, data, keep_grad: bool, device: str) -> torch.Tensor
             image_pe=sam_model.prompt_encoder.get_dense_pe(),
             sparse_prompt_embeddings=sparse_embeddings,
             dense_prompt_embeddings=dense_embeddings,
-            multimask_output=True,
+            multimask_output=False,
         )
         # Postprocess each mask individually and then concatenate then to [batch_size, 1, H, W]
         binary_masks = torch.zeros((low_res_masks.shape[0], original_image_size[0][0], original_image_size[1][0]), device=device)
@@ -76,7 +76,7 @@ def process_batch(sam_model, data, keep_grad: bool, device: str) -> torch.Tensor
             binary_mask = normalize(threshold(upscaled_masks_one_image, 0.0, 0))
             # binary_mask has shape (num_masks, H, W)
             # Collapse all the masks into one and squeeze to get (H, W)
-            binary_mask = torch.squeeze(torch.min(binary_mask, dim=0, keepdim=True)[0])
+            binary_mask = torch.squeeze(torch.max(binary_mask, dim=0, keepdim=True)[0])
             binary_masks[i] = binary_mask
 
     return binary_masks, gt_binary_masks
@@ -146,6 +146,17 @@ def train(sam_model, args, train_dataloader, val_dataloader):
                 if args.plot_every_batch > 0 and k % args.plot_every_batch == 0:
                     img_save_path = os.path.join(plot_dir, f"train_epoch_{epoch}_batch_{k}.png")
                     show_predictions(data[0], binary_masks, gt_binary_masks, img_save_path)
+
+                    # Compute metrics
+                    binary_masks = binary_masks.reshape(gt_binary_masks.shape)
+                    if len(binary_masks.shape) == 2:
+                        binary_masks = binary_masks.unsqueeze(0)
+                        gt_binary_masks = gt_binary_masks.unsqueeze(0)
+                    list_metrics = []
+                    for i in range(len(gt_binary_masks)):
+                        metrics = compute_all_metrics(ground_truth=1-gt_binary_masks[i], prediction_binary=(binary_masks[i] / torch.max(binary_masks[i])) < 0.5, separate_images=args.use_full_images)
+                        list_metrics.append(metrics)
+                    log_metrics(list_metrics, prefix="Train ", step=step)
                 
                 # Compute loss
                 loss = loss_fn(binary_masks, gt_binary_masks.reshape(binary_masks.shape))
@@ -177,7 +188,7 @@ def train(sam_model, args, train_dataloader, val_dataloader):
                     binary_masks = binary_masks.unsqueeze(0)
                     gt_binary_masks = gt_binary_masks.unsqueeze(0)
                 for i in range(len(gt_binary_masks)):
-                    metrics = compute_all_metrics(ground_truth=1-gt_binary_masks[i], prediction_binary=(binary_masks[i] / torch.max(binary_masks[i])) < 0.5)
+                    metrics = compute_all_metrics(ground_truth=1-gt_binary_masks[i], prediction_binary=(binary_masks[i] / torch.max(binary_masks[i])) < 0.5, separate_images=args.use_full_images)
                     list_metrics.append(metrics)
         print("")
         avg_metric: float = log_metrics(list_metrics)
@@ -249,7 +260,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Finetune SAM")
 
     # For learning
-    parser.add_argument("--class_name", type=str, default="boulders", help="Class to finetune")
+    parser.add_argument("--class_name", type=str, default="cracks", help="Class to finetune")
     parser.add_argument("--model_type", type=str, default="vit_b", help="Type of SAM.")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
     parser.add_argument("--weight_decay", type=float, default=0.0, help="Weight decay")
@@ -258,7 +269,7 @@ def parse_args():
     parser.add_argument("--n_train", type=int, default=-1, help="Number of training images")
     parser.add_argument("--n_val", type=int, default=-1, help="Number of test images")
     parser.add_argument("--grad_accumulations", type=int, default=32, help="Number of gradient accumulation steps")
-    parser.add_argument("--batch_size", type=int, default=1, help="Batch size")
+    parser.add_argument("--batch_size", type=int, default=4, help="Batch size")
     parser.add_argument("--plot_every_batch", type=int, default=50, help="Plot predictions every")
     parser.add_argument("--use_full_images", type=bool, default=False, help="Whether to use full images or copped images")
 

@@ -512,7 +512,7 @@ def compute_all_metrics(
     return metrics
 
         
-def log_metrics(metrics: Union[dict, list], log_to_wandb: bool = True, step: Optional[int] = None) -> float:
+def log_metrics(metrics: Union[dict, list], log_to_wandb: bool = True, step: Optional[int] = None, prefix: str = "") -> float:
     """
     Prints the metrics.
     """
@@ -527,9 +527,9 @@ def log_metrics(metrics: Union[dict, list], log_to_wandb: bool = True, step: Opt
                 if not "intersection" in key and not "union" in key:
                     val_std_indiv = metrics["std_individual_masks"][key]
                     val_avg_indiv = metrics["avg_individual_masks"][key]
-                    wandb_metrics["Avg full mask/" + key] = val_full
-                    wandb_metrics["Avg individual masks/" + key] = val_avg_indiv
-                    wandb_metrics["Std individual masks/" + key] = val_std_indiv
+                    wandb_metrics[f"{prefix}Avg full mask/" + key] = val_full
+                    wandb_metrics[f"{prefix}Avg individual masks/" + key] = val_avg_indiv
+                    wandb_metrics[f"{prefix}Std individual masks/" + key] = val_std_indiv
                     if key == "average":
                         return_value = val_full
                         print_color(f" {key}: {val_full:.3f} (Indiv: {val_avg_indiv:.3f} ± {val_std_indiv:.3f})", color="bold")
@@ -540,7 +540,7 @@ def log_metrics(metrics: Union[dict, list], log_to_wandb: bool = True, step: Opt
             print_color(f"Metrics for 1 image:", color="blue")
             for key, val in metrics.items():
                 if not "intersection" in key and not "union" in key:
-                    wandb_metrics["Full image/" + key] = val
+                    wandb_metrics[f"{prefix}Full image/" + key] = val
                     if key == "average":
                         return_value = val
                         print_color(f" {key}: {val:.3f}", color="bold")
@@ -561,17 +561,17 @@ def log_metrics(metrics: Union[dict, list], log_to_wandb: bool = True, step: Opt
                     metrics_std_full[key] = np.std([metric["full_mask"][key] for metric in metrics])
                     metrics_avg_indiv[key] = np.mean([metric["avg_individual_masks"][key] for metric in metrics])
                     metrics_std_indiv[key] = np.mean([metric["std_individual_masks"][key] for metric in metrics])
-                    wandb_metrics["Avg full mask/" + key] = metrics_avg_full[key]
-                    wandb_metrics["Std full mask/" + key] = metrics_std_full[key]
-                    wandb_metrics["Avg individual masks/" + key] = metrics_avg_indiv[key]
-                    wandb_metrics["Std individual masks/" + key] = metrics_std_indiv[key]
+                    wandb_metrics[f"{prefix}Avg full mask/" + key] = metrics_avg_full[key]
+                    wandb_metrics[f"{prefix}Std full mask/" + key] = metrics_std_full[key]
+                    wandb_metrics[f"{prefix}Avg individual masks/" + key] = metrics_avg_indiv[key]
+                    wandb_metrics[f"{prefix}Std individual masks/" + key] = metrics_std_indiv[key]
         else:
             for key in metrics[0].keys():
                 if "intersection" not in key and "union" not in key:
                     metrics_avg_full[key] = np.mean([x[key] for x in metrics])
                     metrics_std_full[key] = np.std([x[key] for x in metrics])
-                    wandb_metrics["Avg full mask/" + key] = metrics_avg_full[key]
-                    wandb_metrics["Std full mask/" + key] = metrics_std_full[key]
+                    wandb_metrics[f"{prefix}Avg full mask/" + key] = metrics_avg_full[key]
+                    wandb_metrics[f"{prefix}Std full mask/" + key] = metrics_std_full[key]
 
         # Print the metrics to the console
         if has_full_mask:
