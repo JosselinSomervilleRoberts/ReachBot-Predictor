@@ -386,23 +386,15 @@ def treat_predictions(predictions, filtered):
     pred_masks = (predictions[0]['masks']).squeeze().detach().cpu().numpy()
     pred_masks_binary = (predictions[0]['masks']>0.5).squeeze().detach().cpu().numpy()
 
-    print("pred_masks.shape", pred_masks.shape)
-    print("pred_masks_binary.shape", pred_masks_binary.shape)
-
     if filtered & (len(pred_masks) > 2) & (pred_masks.shape[0] != 0):
-        print("entering the filtering LOOP")
         confidence = np.max(predictions[0]['scores'].detach().cpu().numpy())
         confidence /= 2
         pred_score = list(predictions[0]['scores'].detach().cpu().numpy())
         pred_t = [pred_score.index(x) for x in pred_score if x>confidence]
-        print("pred_t", pred_t)
 
         if pred_t != []:
             pred_t = pred_t[-1]
-            print("pred_t", pred_t)
-            print(len(pred_masks))
             pred_masks = pred_masks[:pred_t+1]
-            print(len(pred_masks))
             pred_masks_binary = pred_masks_binary[:pred_t+1]
         else:
             pred_masks = np.zeros(pred_masks.shape)
@@ -427,9 +419,6 @@ def treat_predictions(predictions, filtered):
         pred_mask_binary = pred_mask_binary.astype(int)
     else:
         pred_mask_binary = pred_masks_binary
-
-    print("pred_masks.shape", pred_masks.shape)
-    print("pred_masks_binary.shape", pred_masks_binary.shape)
 
     return pred_mask, pred_mask_binary
 
@@ -618,7 +607,7 @@ if __name__ == '__main__':
     log_wandb = True
 
     params = {}
-    params['num_epochs'] = 10
+    params['num_epochs'] = 30
     params['learning_rates'] = [1e-3]
     params['batch_size'] = 8
     params['weight_decay'] = 5e-4
