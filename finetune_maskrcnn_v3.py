@@ -382,23 +382,31 @@ def evaluate_hyper(model, data_loader, device, log_wandb):
     return loss
 
 
-def treat_predictions(predictions, model, confidence, filtered):
+def treat_predictions(predictions, filtered):
     pred_masks = (predictions[0]['masks']).squeeze().detach().cpu().numpy()
     pred_masks_binary = (predictions[0]['masks']>0.5).squeeze().detach().cpu().numpy()
 
-    if filtered:
+    print("pred_masks.shape", pred_masks.shape)
+    print("pred_masks_binary.shape", pred_masks_binary.shape)
+
+    if filtered & (len(pred_masks) > 2) & (pred_masks.shape[0] != 0):
+        print("entering the filtering LOOP")
         confidence = np.max(predictions[0]['scores'].detach().cpu().numpy())
         confidence /= 2
         pred_score = list(predictions[0]['scores'].detach().cpu().numpy())
         pred_t = [pred_score.index(x) for x in pred_score if x>confidence]
+        print("pred_t", pred_t)
 
         if pred_t != []:
             pred_t = pred_t[-1]
+            print("pred_t", pred_t)
+            print(len(pred_masks))
             pred_masks = pred_masks[:pred_t+1]
+            print(len(pred_masks))
             pred_masks_binary = pred_masks_binary[:pred_t+1]
         else:
-            pred_masks = np.zeros_like(pred_masks)
-            pred_masks_binary = np.zeros_like(pred_masks_binary)
+            pred_masks = np.zeros(pred_masks.shape)
+            pred_masks_binary = np.zeros(pred_masks_binary.shape)
 
 
     if pred_masks.shape[0] == 0:
@@ -420,6 +428,9 @@ def treat_predictions(predictions, model, confidence, filtered):
     else:
         pred_mask_binary = pred_masks_binary
 
+    print("pred_masks.shape", pred_masks.shape)
+    print("pred_masks_binary.shape", pred_masks_binary.shape)
+
     return pred_mask, pred_mask_binary
 
 
@@ -431,7 +442,7 @@ def treat_target(targets, index):
     return ground_truth_mask
 
 
-def evaluate_hyper_custom(model, confidence, data_loader_test, epoch, device, log_wandb):
+def evaluate_hyper_custom(model, data_loader_test, epoch, device, log_wandb):
     n_threads = torch.get_num_threads()
     # FIXME remove this and make paste_masks_in_image run on the GPU
     torch.set_num_threads(1)
@@ -448,12 +459,11 @@ def evaluate_hyper_custom(model, confidence, data_loader_test, epoch, device, lo
 
         predictions = model(images)
 
-        pred_mask, pred_mask_binary = treat_predictions(predictions, model, confidence, filtered=True)
+        pred_mask, pred_mask_binary = treat_predictions(predictions, filtered=True)
 
         ground_truth_mask = treat_target(targets, 0)
 
         metrics_custom_list.append(compute_all_metrics(ground_truth=ground_truth_mask,
-                                                    prediction=pred_mask,
                                                     prediction_binary=pred_mask_binary,
                                                     threshold=0.5))
 
@@ -467,7 +477,7 @@ def evaluate_hyper_custom(model, confidence, data_loader_test, epoch, device, lo
             
 
 # Hyperparaneter tuning: for number of epochs and learning rate
-def hyperparameter_tuning(params, confidence, log_wandb):
+def hyperparameter_tuning(params, log_wandb):
     # from toolbox.aws import shutdown
 
     # get the parameters
@@ -542,7 +552,7 @@ def hyperparameter_tuning(params, confidence, log_wandb):
             # update the learning rate
             # lr_scheduler.step()
             # evaluate on the test dataset
-            avg = evaluate_hyper_custom(model, confidence, data_loader_test, epoch, device, log_wandb)
+            avg = evaluate_hyper_custom(model, data_loader_test, epoch, device, log_wandb)
             
             # log the model predicitons for the last epoch in wandb
             if log_wandb:
@@ -564,7 +574,7 @@ def hyperparameter_tuning(params, confidence, log_wandb):
                     with torch.no_grad():
                         for i in range(len(images)):
                             predictions = model([images[i]])
-                            pred_mask, pred_mask_binary = treat_predictions(predictions, model, confidence, filtered=True)
+                            pred_mask, pred_mask_binary = treat_predictions(predictions, filtered=True)
                             ground_truth_mask = treat_target(targets, i)
                             pred_masks.append(pred_mask)
                             pred_masks_binary.append(pred_mask_binary)
@@ -608,7 +618,7 @@ if __name__ == '__main__':
     log_wandb = True
 
     params = {}
-    params['num_epochs'] = 30
+    params['num_epochs'] = 10
     params['learning_rates'] = [1e-3]
     params['batch_size'] = 8
     params['weight_decay'] = 5e-4
@@ -616,6 +626,4 @@ if __name__ == '__main__':
     params['step_size'] = 3
     params['gamma'] = 0.1
 
-    confidence = 0.5
-
-    hyperparameter_tuning(params, confidence, log_wandb)
+    hyperparameter_tuning(params, log_wandb)
