@@ -531,7 +531,7 @@ def log_metrics(metrics: Union[dict, list], log_to_wandb: bool = True, step: Opt
                     wandb_metrics["Avg individual masks/" + key] = val_avg_indiv
                     wandb_metrics["Std individual masks/" + key] = val_std_indiv
                     if key == "average":
-                        return_value = val
+                        return_value = val_full
                         print_color(f" {key}: {val_full:.3f} (Indiv: {val_avg_indiv:.3f} ± {val_std_indiv:.3f})", color="bold")
                     else:
                         print(f" - {key}: {val_full:.3f} (Indiv: {val_avg_indiv:.3f} ± {val_std_indiv:.3f})")

@@ -21,7 +21,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Finetune SAM")
 
     # For learning
-    parser.add_argument("--class_name", type=str, default="boulder", help="Class to finetune")
+    parser.add_argument("--class_name", type=str, default="cracks", help="Class to finetune")
     parser.add_argument("--lr", type=float, default=1e-6, help="Learning rate")
     parser.add_argument("--weight_decay", type=float, default=0.0, help="Weight decay")
     parser.add_argument("--num_epochs", type=int, default=100, help="Number of epochs")
@@ -42,15 +42,12 @@ def parse_args():
     return parser.parse_args()
 
 l = None
+args = parse_args()
 config = configparser.ConfigParser()
 config.read("config.ini")
-FINETUNE_DATA_FOLDER = config["PATHS"]["FINETUNE_DATASET"]
+FINETUNE_DATA_FOLDER = f"./datasets/{args.class_name}_classification_train"
 
 def finetune(class_name: str, lr: float = 1e-4, weight_decay:float = 0.0, num_epochs: int = 100, save_model: bool = True, n_train: int = 10, grad_accumulations: int = 1):
-    if not check_if_finetuning_dataset_exists():
-        warn("Finetuning dataset not found. Generating it now.")
-        generate_finetuning_dataset()
-    
     # Load the dataset
     bbox_coords: dict = load_bbox_coords(class_name=class_name)
     ground_truth_masks: dict = load_gt_masks(class_name=class_name)
@@ -78,7 +75,7 @@ def finetune(class_name: str, lr: float = 1e-4, weight_decay:float = 0.0, num_ep
     transformed_data = defaultdict(dict)
     keys = list(bbox_coords.keys())
     for k in tqdm(keys[:n_train], desc="Preprocessing data"):
-        img_folder = os.path.join(FINETUNE_DATA_FOLDER, class_name, "images", str(k) + ".png")
+        img_folder = os.path.join(FINETUNE_DATA_FOLDER, "positive", str(k) + ".png")
         image = cv2.imread(img_folder)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  
         transform = ResizeLongestSide(sam_model.image_encoder.img_size)
@@ -238,7 +235,6 @@ def compare_untrained_and_trained(class_name: str, trained_model, index: int):
     plt.close()
 
 if __name__ == "__main__":
-    args = parse_args()
     l = Logger(args.verbose, args.save, args.save_path, args.tensorboard)
     losses, trained_model = finetune(args.class_name, args.lr, args.weight_decay, args.num_epochs, args.save_model, args.n_train, args.gradient_accumulation_steps)
 

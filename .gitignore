@@ -10,6 +10,10 @@ config.ini
 # **/*.ipynb
 wandb/
 classification_models/
+saves/
+logs/
+datasets.zip
+saved_images/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
