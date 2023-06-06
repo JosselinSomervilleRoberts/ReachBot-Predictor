@@ -467,7 +467,6 @@ def evaluate_hyper_custom(model, data_loader_test, epoch, device, log_wandb):
 
 # Hyperparaneter tuning: for number of epochs and learning rate
 def hyperparameter_tuning(params, log_wandb):
-    # from toolbox.aws import shutdown
 
     # get the parameters
     learning_rates = params['learning_rates']
@@ -605,7 +604,8 @@ def hyperparameter_tuning(params, log_wandb):
     # Save the best model
     torch.save(best_model.state_dict(), f"./models/maskrcnn_finetuned_model_hyper_2_epochs_{num_epochs}_learning_rate_{best_learning_rate}.pt")
 
-    # shutdown()
+    from toolbox.aws import shutdown
+    shutdown()
 
 
 
