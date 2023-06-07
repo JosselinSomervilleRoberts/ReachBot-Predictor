@@ -8,7 +8,7 @@ train_pipeline = [
     dict(type="LoadImageFromFile"),
     dict(type="LoadAnnotations"),
     dict(
-        type="Resize", scale=640, keep_ratio=True
+        type="Resize", scale=512, keep_ratio=True
     ),
     dict(type="RandomFlip", prob=0.5),
     dict(type="PhotoMetricDistortion"),
@@ -16,7 +16,7 @@ train_pipeline = [
 ]
 test_pipeline = [
     dict(type="LoadImageFromFile"),
-    dict(type="Resize", scale=640, keep_ratio=True),
+    dict(type="Resize", scale=512, keep_ratio=True),
     # add loading annotation after ``Resize`` because ground truth
     # does not need to do resize data transform
     dict(type="LoadAnnotations"),
