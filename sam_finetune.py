@@ -26,102 +26,8 @@ gc.enable()
 import matplotlib
 matplotlib.use('Agg')
 
-
-def get_device() -> str:
-    return "cuda" if torch.cuda.is_available() else "cpu"
-
-# Source: https://adamoudad.github.io/posts/progress_bar_with_tqdm/
-def get_ram_used() -> float:
-    # Getting all memory using os.popen()
-    total_memory, used_memory, free_memory = map(
-        int, os.popen('free -t -m').readlines()[-1].split()[1:])
-    
-    # Memory usage
-    ram_used = (used_memory/total_memory) * 100
-    return ram_used
-
-def get_cuda_used() -> float:
-    handle = nvidia_smi.nvmlDeviceGetHandleByIndex(0)
-    info = nvidia_smi.nvmlDeviceGetMemoryInfo(handle)
-    return 100 - 100*info.free/info.total
-
-def set_description(pbar, description: str, k: int, frequency: int = 50):
-    if k % frequency == 0:
-        pbar.set_description(f"{description} (RAM used: {get_ram_used():.2f}% / CUDA used {get_cuda_used():.2f}%)")
-
-
-def load_gt_masks(class_name: str, train: bool, n: int = -1, device: Optional[str] = None) -> dict:  # -> Dict[int, Image]:
-    """Loads the ground truth masks from the FINETUNE_DATASET_FOLDER folder."""
-    if device is None: device = get_device()
-    ground_truth_masks = {}
-
-    mode: str = "train" if train else "val"
-    masks_paths = sorted(
-        glob.glob(os.path.join(f"./datasets/{class_name}_classification_{mode}", "masks/*.png"))
-    )
-    if n > 0:
-        masks_paths = masks_paths[:n]
-    
-    description = f"Loading {mode} masks on {device}"
-    with tqdm(enumerate(masks_paths), total=len(masks_paths)) as pbar:
-        for k, mask_path in pbar:
-            set_description(pbar, description, k)
-            gt_grayscale = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-            gt_mask = gt_grayscale == 0
-            gt_mask_resized = torch.from_numpy(np.resize(gt_mask, (1, 1, gt_mask.shape[0], gt_mask.shape[1]))).to(device)
-            gt_binary_mask = torch.as_tensor(gt_mask_resized > 0, dtype=torch.float32)
-            ground_truth_masks[k] = gt_binary_mask
-    return ground_truth_masks
-
-def load_images(class_name: str, train: bool, n: int = -1, device: Optional[str] = None) -> dict:  # -> Dict[int, Image]:
-    if device is None: device = get_device()
-    transformed_data = {}
-
-    mode: str = "train" if train else "val"
-    images_paths = sorted(
-        glob.glob(os.path.join(f"./datasets/{class_name}_classification_{mode}", "positive/*.png"))
-    )
-    if n > 0:
-        images_paths = images_paths[:n]
-
-    description = f"Loading {mode} images on {device}"
-    with tqdm(enumerate(images_paths), total=len(images_paths)) as pbar:
-        for k, img_path in pbar:
-            set_description(pbar, description, k)
-            image = cv2.imread(img_path)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  
-            transformed_data[k] = image
-    return transformed_data
-
-
-class SegmentationDataset(Dataset):
-
-    def __init__(self, class_name: str, train: bool, n: int = -1, device: Optional[None] = None, transform=None, mask_transform=None):
-        self.transform = transform
-        self.mask_transform = mask_transform
-
-        self._train = train
-        self._class_name = class_name
-        self._n = n
-        self._device = device if device is not None else get_device()
-
-        self.imgs = load_images(self._class_name, self._train, self._n, self._device)
-        self.gt_masks = load_gt_masks(self._class_name, self._train, self._n, self._device)
-
-    def __len__(self):
-        return len(self.imgs)
-
-    def __getitem__(self, idx):
-        image = self.imgs[idx]
-        gt_mask = self.gt_masks[idx]
-        original_image_size = image.shape[:2]
-
-        if self.transform:
-            image = self.transform.apply_image(image)
-        if self.mask_transform:
-            gt_mask = self.mask_transform(gt_mask)
-
-        return image, gt_mask, original_image_size
+from data_utils.datasets import FullImageDataset, CroppedImageDataset
+from data_utils.utils import get_device, set_description
 
 
 def process_batch(sam_model, data, keep_grad: bool, device: str) -> torch.Tensor:
@@ -163,7 +69,7 @@ def process_batch(sam_model, data, keep_grad: bool, device: str) -> torch.Tensor
             multimask_output=False,
         )
         # Postprocess each mask individually and then concatenate then to [batch_size, 1, H, W]
-        binary_masks = torch.zeros((low_res_masks.shape[0], 128, 128), device=device)
+        binary_masks = torch.zeros((low_res_masks.shape[0], original_image_size[0][0], original_image_size[1][0]), device=device)
         # upscaled_masks = sam_model.postprocess_masks(low_res_masks, input_size, original_image_size).to(device)
         for i in range(low_res_masks.shape[0]):
             upscaled_masks_one_image = sam_model.postprocess_masks(low_res_masks[i].unsqueeze(0), input_size, [original_image_size[0][i], original_image_size[1][i]]).squeeze(0)
@@ -182,10 +88,14 @@ def show_predictions(input_image, binary_masks, gt_binary_masks, save_path):
     plt.imshow(input_image[0].permute(0, 1, 2).detach().cpu().numpy())
     plt.axis('off')
     plt.subplot(1, 3, 2)
-    plt.imshow(gt_binary_masks[0].detach().cpu().numpy())
+    if len(gt_binary_masks.shape) > 2:
+        gt_binary_masks = gt_binary_masks[0]
+    plt.imshow(gt_binary_masks.detach().cpu().numpy())
     plt.axis('off')
     plt.subplot(1, 3, 3)
-    binary_mask = binary_masks[0].detach()
+    if len(binary_masks.shape) > 2:
+        binary_masks = binary_masks[0]
+    binary_mask = binary_masks.detach()
     binary_mask = (binary_mask / torch.max(binary_mask)) > 0.5
     plt.imshow(binary_mask.cpu().numpy())
     plt.axis('off')
@@ -236,9 +146,20 @@ def train(sam_model, args, train_dataloader, val_dataloader):
                 if args.plot_every_batch > 0 and k % args.plot_every_batch == 0:
                     img_save_path = os.path.join(plot_dir, f"train_epoch_{epoch}_batch_{k}.png")
                     show_predictions(data[0], binary_masks, gt_binary_masks, img_save_path)
+
+                    # Compute metrics
+                    binary_masks = binary_masks.reshape(gt_binary_masks.shape)
+                    if len(binary_masks.shape) == 2:
+                        binary_masks = binary_masks.unsqueeze(0)
+                        gt_binary_masks = gt_binary_masks.unsqueeze(0)
+                    list_metrics = []
+                    for i in range(len(gt_binary_masks)):
+                        metrics = compute_all_metrics(ground_truth=1-gt_binary_masks[i], prediction_binary=(binary_masks[i] / torch.max(binary_masks[i])) < 0.5, separate_images=args.use_full_images)
+                        list_metrics.append(metrics)
+                    log_metrics(list_metrics, prefix="Train ", step=step)
                 
                 # Compute loss
-                loss = loss_fn(binary_masks, gt_binary_masks)
+                loss = loss_fn(binary_masks, gt_binary_masks.reshape(binary_masks.shape))
                 loss_of_batch += loss
                 loss.backward()
                 wandb.log({"Training/loss": loss.item()}, step=step)
@@ -262,8 +183,12 @@ def train(sam_model, args, train_dataloader, val_dataloader):
                     img_save_path = os.path.join(plot_dir, f"val_epoch_{epoch}_batch_{k}.png")
                     show_predictions(data[0], binary_masks, gt_binary_masks, img_save_path)
 
+                binary_masks = binary_masks.reshape(gt_binary_masks.shape)
+                if len(binary_masks.shape) == 2:
+                    binary_masks = binary_masks.unsqueeze(0)
+                    gt_binary_masks = gt_binary_masks.unsqueeze(0)
                 for i in range(len(gt_binary_masks)):
-                    metrics = compute_all_metrics(ground_truth=gt_binary_masks[i], prediction_binary=(binary_masks[i] / torch.max(binary_masks[i])) > 0.5)
+                    metrics = compute_all_metrics(ground_truth=1-gt_binary_masks[i], prediction_binary=(binary_masks[i] / torch.max(binary_masks[i])) < 0.5, separate_images=args.use_full_images)
                     list_metrics.append(metrics)
         print("")
         avg_metric: float = log_metrics(list_metrics)
@@ -314,8 +239,12 @@ def finetune_new(args):
 
     # Load data
     print_color("\nLoading data...", color="bold")
-    training_data = SegmentationDataset(args.class_name, train=True, n=args.n_train, device="cpu", transform=transform)
-    val_data = SegmentationDataset(args.class_name, train=False, n=args.n_val, device="cpu", transform=transform)
+    if args.use_full_images:
+        training_data = FullImageDataset(class_name=args.class_name, train=True, n=args.n_train, device="cpu", transform=transform, collapse=True)
+        val_data = FullImageDataset(class_name=args.class_name, train=False, n=args.n_val, device="cpu", transform=transform, collapse=True)
+    else:
+        training_data = CroppedImageDataset(class_name=args.class_name, train=True, n=args.n_train, device="cpu", transform=transform)
+        val_data = CroppedImageDataset(class_name=args.class_name, train=False, n=args.n_val, device="cpu", transform=transform)
     train_dataloader = DataLoader(training_data, batch_size=args.batch_size, shuffle=True)
     val_dataloader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True)
 
@@ -336,12 +265,13 @@ def parse_args():
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
     parser.add_argument("--weight_decay", type=float, default=0.0, help="Weight decay")
     parser.add_argument("--num_epochs", type=int, default=10, help="Number of epochs")
-    parser.add_argument("--save_model", type=bool, default=False, help="Whether to save the model")
+    parser.add_argument("--save_model", type=bool, default=True, help="Whether to save the model")
     parser.add_argument("--n_train", type=int, default=-1, help="Number of training images")
     parser.add_argument("--n_val", type=int, default=-1, help="Number of test images")
-    parser.add_argument("--grad_accumulations", type=int, default=8, help="Number of gradient accumulation steps")
+    parser.add_argument("--grad_accumulations", type=int, default=32, help="Number of gradient accumulation steps")
     parser.add_argument("--batch_size", type=int, default=4, help="Batch size")
     parser.add_argument("--plot_every_batch", type=int, default=50, help="Plot predictions every")
+    parser.add_argument("--use_full_images", type=bool, default=False, help="Whether to use full images or copped images")
 
     # For Logger
     parser.add_argument("--run_name", type=str, default="SAM", help="Name of the run")

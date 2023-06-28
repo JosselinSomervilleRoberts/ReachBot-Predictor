@@ -12,7 +12,7 @@ from data_utils.load_data import load_images, load_gt_masks, load_palette_gt_mas
 
 
 class FullImageDataset(Dataset):
-    def __init__(self, class_name: str, train: bool, n: int = -1, device: Optional[None] = None, transform=None, mask_transform=None, transforms=None):
+    def __init__(self, class_name: str, train: bool, n: int = -1, device: Optional[None] = None, collapse: bool = False, transform=None, mask_transform=None, transforms=None):
         self.transform = transform
         self.mask_transform = mask_transform
         self.transforms = transforms
@@ -21,13 +21,15 @@ class FullImageDataset(Dataset):
         self._class_name = class_name
         self._n = n
         self._device = device if device is not None else get_device()
+        self._collapse = collapse
 
         # Load all image files, sorting them to ensure that they are aligned
-        self.imgs = load_images(self._class_name, self._train, full_images=True, n=self._n, device=self._device)
-        self.masks_data = load_palette_gt_masks(self._class_name, self._train, full_images=True, n=self._n, device=self._device)
+        self.imgs = load_images(class_name=self._class_name, train=self._train, full_images=True, n=self._n, device=self._device)
+        self.masks_data = load_palette_gt_masks(class_name=self._class_name, train=self._train, full_images=True, n=self._n, device=self._device, collapse=collapse)
 
     def __getitem__(self, idx):
         image = self.imgs[idx]
+        original_image_size = image.shape[:2]
         mask_data = self.masks_data[idx]
         masks = mask_data["masks"]
         boxes = mask_data["boxes"]
@@ -43,6 +45,9 @@ class FullImageDataset(Dataset):
             image = self.transform.apply_image(image)
         if self.mask_transform:
             masks = self.mask_transform(masks)
+
+        if self._collapse:
+            return image, masks, original_image_size
 
         target = {}
         target["boxes"] = boxes
@@ -80,7 +85,7 @@ class FullImageDataset(Dataset):
                     continue
                 blob = (separated_mask == i).astype(int)
                 nb_pixels = np.sum(blob)
-                if nb_pixels < 20:
+                if nb_pixels < 32:
                     continue
                 # Get the bounding box
                 bbox = np.array((Image.fromarray(blob.astype(np.uint8) * 255)).getbbox())
@@ -115,8 +120,8 @@ class CroppedImageDataset(Dataset):
         self._n = n
         self._device = device if device is not None else get_device()
 
-        self.imgs = load_images(self._class_name, self._train, self._n, self._device)
-        self.gt_masks = load_gt_masks(self._class_name, self._train, self._n, self._device)
+        self.imgs = load_images(class_name=self._class_name, full_images=False, train=self._train, n=self._n, device=self._device)
+        self.gt_masks = load_gt_masks(class_name=self._class_name, full_images=False, train=self._train, n=self._n, device=self._device)
 
     def __len__(self):
         return len(self.imgs)

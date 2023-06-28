@@ -4,7 +4,7 @@ import numpy as np
 import os
 from PIL import Image
 import torch
-import tqdm
+from tqdm import tqdm
 
 from typing import Optional, List
 from data_utils.utils import get_device, set_description
@@ -43,10 +43,10 @@ def load_gt_masks(class_name: str, train: bool, full_images: bool, n: int = -1, 
     mode: str = "train" if train else "val"
     mode2 = "full" if full_images else "cropped"
     directory_path = os.path.join(f"./datasets/{class_name}/{mode2}/{mode}")
-    images_paths = sorted(
+    masks_paths = sorted(
         glob.glob(os.path.join(directory_path, "masks/*.png"))
     )
-    if len(images_paths) == 0:
+    if len(masks_paths) == 0:
         raise ValueError(f"No masks found in {os.path.join(directory_path, 'masks')}")
     if n > 0:
         masks_paths = masks_paths[:n]
@@ -71,10 +71,10 @@ def load_palette_gt_masks(class_name: str, train: bool, full_images: bool, n: in
     mode: str = "train" if train else "val"
     mode2 = "full" if full_images else "cropped"
     directory_path = os.path.join(f"./datasets/{class_name}/{mode2}/{mode}")
-    images_paths = sorted(
+    masks_paths = sorted(
         glob.glob(os.path.join(directory_path, "masks/*.png"))
     )
-    if len(images_paths) == 0:
+    if len(masks_paths) == 0:
         raise ValueError(f"No masks found in {os.path.join(directory_path, 'masks')}")
     if n > 0:
         masks_paths = masks_paths[:n]
@@ -103,7 +103,7 @@ def load_palette_gt_masks(class_name: str, train: bool, full_images: bool, n: in
             num_objs = len(obj_ids)
             boxes = []
             for i in range(num_objs):
-                pos = np.where(masks[i])
+                pos = np.where(masks[i]) if not collapse else np.where(masks)
                 xmin = np.min(pos[1])
                 xmax = np.max(pos[1])
                 ymin = np.min(pos[0])
@@ -112,7 +112,10 @@ def load_palette_gt_masks(class_name: str, train: bool, full_images: bool, n: in
             
             # Convert everything into a torch.Tensor
             boxes = torch.as_tensor(boxes, dtype=torch.float32)
-            masks = torch.as_tensor(masks, dtype=torch.uint8)
+            if collapse:
+                masks = 1 - torch.as_tensor(masks, dtype=torch.float32)
+            else:
+                masks = torch.as_tensor(masks, dtype=torch.uint8)
             area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
 
             mask_infos = {}

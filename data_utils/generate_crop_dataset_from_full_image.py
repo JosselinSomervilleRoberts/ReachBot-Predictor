@@ -1,11 +1,14 @@
-from torch.data.utils import DataLoader
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 import os
 import cv2
 import numpy as np
 
-from data_utils.datasets import FullImageDataset, CropDataset
+from data_utils.datasets import FullImageDataset
 from data_utils.utils import set_description
+
+import nvidia_smi
+nvidia_smi.nvmlInit()
 
 class_name: str = "boulders"
 train: bool = True
