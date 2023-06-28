@@ -63,7 +63,7 @@ def load_gt_masks(class_name: str, train: bool, full_images: bool, n: int = -1, 
     return ground_truth_masks
 
 
-def load_palette_gt_masks(class_name: str, train: bool, full_images: bool, n: int = -1, device: Optional[str] = None) -> List[dict]:
+def load_palette_gt_masks(class_name: str, train: bool, full_images: bool, n: int = -1, device: Optional[str] = None, collapse: bool = False) -> List[dict]:
     """Loads the ground truth masks from the FINETUNE_DATASET_FOLDER folder."""
     if device is None: device = get_device()
     ground_truth_masks = []
@@ -94,6 +94,10 @@ def load_palette_gt_masks(class_name: str, train: bool, full_images: bool, n: in
 
             # split the color-encoded mask into a set of binary masks
             masks = mask == obj_ids[:, None, None]
+
+            if collapse:
+                # Collapse the masks into one
+                masks = np.max(masks, axis=0)
 
             # get bounding box coordinates for each mask
             num_objs = len(obj_ids)

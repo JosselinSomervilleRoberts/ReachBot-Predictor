@@ -1,7 +1,10 @@
 from torch.utils.data import Dataset
 import torch
 from typing import Optional
-import cv2
+import random
+from skimage.morphology import label
+import numpy as np
+from PIL import Image
 
 
 from data_utils.utils import get_device
@@ -26,7 +29,7 @@ class FullImageDataset(Dataset):
     def __getitem__(self, idx):
         image = self.imgs[idx]
         mask_data = self.masks_data[idx]
-        masks = mask_data["mask"]
+        masks = mask_data["masks"]
         boxes = mask_data["boxes"]
         area = mask_data["area"]
 
@@ -67,18 +70,34 @@ class FullImageDataset(Dataset):
         # image is a cv2 image
 
         result = []
-        for i in range(boxes.shape[0]):
-            box = boxes[i]
-            mask = masks[i]
+        for i in range(boxes.shape[1]):
+            box = boxes[0][i]
+            mask = masks[0][i]
 
-            x1, y1, x2, y2 = box
-            cropped_image = image[y1:y2, x1:x2]
-            cropped_mask = mask[y1:y2, x1:x2]
+            separated_mask = label(mask)
+            for i in np.unique(separated_mask):
+                if i == 0:  # background
+                    continue
+                blob = (separated_mask == i).astype(int)
+                nb_pixels = np.sum(blob)
+                if nb_pixels < 20:
+                    continue
+                # Get the bounding box
+                bbox = np.array((Image.fromarray(blob.astype(np.uint8) * 255)).getbbox())
 
-            result.append({
-                "image": cropped_image,
-                "mask": cropped_mask
-            })
+                x1, y1, x2, y2 = bbox
+                # Add some randomness to the coordinates
+                x1 = max(0, x1 -random.randint(0, 20), 0)
+                y1 = max(0, y1 - random.randint(0, 20), 0)
+                x2 = min(image.shape[2], x2 + random.randint(0, 20))
+                y2 = min(image.shape[1], y2 + random.randint(0, 20))
+                cropped_image = image[0,y1:y2, x1:x2]
+                cropped_mask = blob[y1:y2, x1:x2]
+
+                result.append({
+                    "image": cropped_image,
+                    "mask": cropped_mask
+                })
 
         return result
 

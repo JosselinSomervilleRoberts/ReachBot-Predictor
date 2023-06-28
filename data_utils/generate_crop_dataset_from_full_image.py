@@ -28,12 +28,19 @@ with tqdm(enumerate(data_loader), total=len(data_loader)) as pbar:
             directory_path = f"./datasets/{class_name}/cropped/{mode}"
             if not os.path.exists(directory_path):
                 os.makedirs(directory_path)
+                os.makedirs(os.path.join(directory_path, "images"))
+                os.makedirs(os.path.join(directory_path, "masks"))
             image_path = os.path.join(directory_path, f"images/{image_idx}.png")
             mask_path = os.path.join(directory_path, f"masks/{image_idx}.png")
+            # The image is a tensor of (H, W, 3)
+            image = image.squeeze().cpu().numpy()
+            image = image.astype(np.uint8)
+            # Saves the numpy array as a png image
             cv2.imwrite(image_path, image)
 
-            # Convert mask to grayscale
+            # Convert mask to grayscale Save as whte and black (expand dims to 3 channels)
             mask = mask.squeeze().cpu().numpy()
             mask = mask.astype(np.uint8) * 255
+            mask = np.concatenate([np.expand_dims(mask, axis=2)] * 3, axis=2)
             cv2.imwrite(mask_path, mask)
             image_idx += 1
