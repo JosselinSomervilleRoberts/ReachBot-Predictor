@@ -22,6 +22,7 @@ LABELBOX_DATASET_FOLDER = config["PATHS"]["LABELBOX_DATASET"]
 FINETUNE_DATASET_FOLDER = config["PATHS"]["FINETUNE_DATASET"]
 CRACKS_DATASET_FOLDER = config["PATHS"]["CRACKS_DATASET"]
 CRACKS_SEG_HM = config["PATHS"]["CRACKS_SEG_HM"]
+CRACKS_SEG_FULL_DATASET = config["PATHS"]["CRACKS_SEG_FULL_DATASET"]
 
 
 def load_hm_mask() -> dict:  # -> Dict[int, Image]:
@@ -33,7 +34,7 @@ def load_hm_mask() -> dict:  # -> Dict[int, Image]:
     )
     for k, mask_path in enumerate(masks_paths):
         gt_grayscale = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-        ground_truth_masks[int(k)] = gt_grayscale == 0
+        ground_truth_masks[k] = gt_grayscale
 
     return ground_truth_masks
 
@@ -96,10 +97,53 @@ def get_human_eval_metrics(output_size=128, max_size=128, min_size=32):
     return metrics
 
 
+def get_human_eval_metrics_full_images():
+    class_name = "crack"
+    gt_masks = load_gt_masks(class_name)
+    hm_masks = load_hm_mask()
+    curr_image = None
+    curr_total_mask = None
+    metrics = []
+    for k, image_path in enumerate(
+        tqdm(sorted(glob.glob(f"{FINETUNE_DATASET_FOLDER}/{class_name}/images/*.png")))
+    ):
+        image_number = image_path.split("/")[-1].split("_")[0]
+        if image_number != curr_image:
+            curr_image = image_number
+            total_mask_curr_image = len(
+                glob.glob(
+                    f"{FINETUNE_DATASET_FOLDER}/{class_name}/images/{curr_image}_*.png"
+                )
+            )
+            curr_total_mask = sum(
+                [
+                    gt_masks[k + i].astype(np.uint8) * 255
+                    for i in range(total_mask_curr_image)
+                ]
+            )
+
+            hm_mask = cv2.resize(
+                hm_masks[int(image_number)].copy().astype(np.uint8) * 255,
+                (curr_total_mask.shape[1], curr_total_mask.shape[0]),
+            )
+
+            mask_palette = np.zeros(curr_total_mask.shape)
+            mask_palette[curr_total_mask > 0] = 1
+            hm_mask_palette = np.zeros(hm_mask.shape)
+            hm_mask_palette[hm_mask > 0] = 1
+            metrics.append(
+                compute_all_metrics(
+                    ground_truth=mask_palette, prediction_binary=hm_mask_palette
+                )
+            )
+
+    return metrics
+
+
 if __name__ == "__main__":
-    # wandb.init(
-    #     project="Reachbot-cracks",
-    #     name="human-eval",
-    # )
-    metrics = get_human_eval_metrics()
+    wandb.init(
+        project="Reachbot-cracks",
+        name="human-eval-full-images",
+    )
+    metrics = get_human_eval_metrics_full_images()
     log_metrics(metrics)
