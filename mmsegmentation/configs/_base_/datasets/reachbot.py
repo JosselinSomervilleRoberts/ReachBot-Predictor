@@ -2,18 +2,21 @@ dataset_type = "ReachbotDataset"
 data_root = "../datasets/cracks_seg/"
 
 
-crop_size = (224, 224)
+crop_size = (512, 512)
 
 train_pipeline = [
     dict(type="LoadImageFromFile"),
     dict(type="LoadAnnotations"),
+    dict(
+        type="Resize", scale=512, keep_ratio=True
+    ),
     dict(type="RandomFlip", prob=0.5),
     dict(type="PhotoMetricDistortion"),
     dict(type="PackSegInputs"),
 ]
 test_pipeline = [
     dict(type="LoadImageFromFile"),
-    dict(type="Resize", scale=(224, 224), keep_ratio=True),
+    dict(type="Resize", scale=512, keep_ratio=True),
     # add loading annotation after ``Resize`` because ground truth
     # does not need to do resize data transform
     dict(type="LoadAnnotations"),
@@ -45,5 +48,5 @@ val_dataloader = dict(
 )
 test_dataloader = val_dataloader
 
-val_evaluator = dict(type="IoUMetric", iou_metrics=["mIoU"])
+val_evaluator = dict(type="ReachbotMetric")
 test_evaluator = val_evaluator

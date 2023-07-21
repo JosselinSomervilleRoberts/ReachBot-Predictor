@@ -6,7 +6,7 @@ env_cfg = dict(
 )
 vis_backends = [dict(type="LocalVisBackend"), dict(type="WandbVisBackend")]
 visualizer = dict(
-    type="SegLocalVisualizer", vis_backends=vis_backends, name="visualizer", alpha=0.4
+    type="SegLocalVisualizer", vis_backends=vis_backends, name="visualizer", alpha=0.6
 )
 log_processor = dict(by_epoch=False)
 log_level = "INFO"

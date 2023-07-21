@@ -3,11 +3,14 @@ import argparse
 import logging
 import os
 import os.path as osp
+import time
 
 from mmengine.config import Config, DictAction
 from mmengine.logging import print_log
 from mmengine.runner import Runner
 from mmseg.registry import RUNNERS
+from toolbox import aws
+
 
 
 def parse_args():
@@ -107,4 +110,18 @@ def main():
 
 
 if __name__ == "__main__":
+    start_time = time.time()
+    # try:
     main()
+    end_time = time.time()
+    if (end_time - start_time) > 60 * 5:
+        aws.shutdown()
+    else:
+        print("Training time is less than 5 minutes, not shutdown")
+
+    # except:
+    #     end_time = time.time()
+    #     if (end_time - start_time) > 60 * 5:
+    #         aws.shutdown()
+    #     else:
+    #         print("Training time is less than 5 minutes, not shutdown")

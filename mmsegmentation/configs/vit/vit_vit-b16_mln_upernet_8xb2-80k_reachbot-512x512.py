@@ -40,16 +40,16 @@ param_scheduler = [
     ),
 ]
 
-train_cfg = dict(type="IterBasedTrainLoop", max_iters=1000, val_interval=10)
+train_cfg = dict(type="IterBasedTrainLoop", max_iters=20000, val_interval=1000)
 val_cfg = dict(type="ValLoop")
 test_cfg = dict(type="TestLoop")
 default_hooks = dict(
     timer=dict(type="IterTimerHook"),
-    logger=dict(type="LoggerHook", interval=1, log_metric_by_epoch=False),
+    logger=dict(type="LoggerHook", interval=10, log_metric_by_epoch=False),
     param_scheduler=dict(type="ParamSchedulerHook"),
-    checkpoint=dict(type="CheckpointHook", by_epoch=False, interval=8000),
+    checkpoint=dict(type="CheckpointHook", by_epoch=False, interval=1000),
     sampler_seed=dict(type="DistSamplerSeedHook"),
-    visualization=dict(type="SegVisualizationHook", draw=True, interval=10),
+    visualization=dict(type="SegVisualizationHook", draw=True, interval=5),
 )
 
 # By default, models are trained on 8 GPUs with 2 images per GPU
