@@ -8,9 +8,21 @@ crop_size = (256, 256)
 data_preprocessor = dict(size=crop_size)
 model = dict(
     data_preprocessor=data_preprocessor,
-    pretrained="pretrain/vit_base_patch16_224.pth",
-    decode_head=dict(num_classes=2),
-    auxiliary_head=dict(num_classes=2),
+    pretrained="pretrain/upernet_vit-b16_mln_512x512_80k_ade20k_20210624_130547-0403cee1_fix.pth",
+    decode_head=dict(
+        num_classes=2,
+        loss_decode=[
+            dict(type="SkilLoss", loss_name="loss_skill", loss_weight=1.0),
+            dict(type="DiceLoss", loss_name="loss_dice", loss_weight=1.0),
+        ],
+    ),
+    auxiliary_head=dict(
+        num_classes=2,
+        loss_decode=[
+            dict(type="SkilLoss", loss_name="loss_skill", loss_weight=0.4),
+            dict(type="DiceLoss", loss_name="loss_dice", loss_weight=0.4),
+        ],
+    ),
 )
 
 # AdamW optimizer, no weight decay for position embedding & layer norm
@@ -53,6 +65,21 @@ default_hooks = dict(
 )
 
 # By default, models are trained on 8 GPUs with 2 images per GPU
-train_dataloader = dict(batch_size=2)
+train_dataloader = dict(batch_size=8)
 val_dataloader = dict(batch_size=1)
 test_dataloader = val_dataloader
+
+vis_backends = [
+    dict(type="LocalVisBackend"),
+    dict(
+        type="WandbVisBackend",
+        init_kwargs=dict(
+            project="cracks_segmentation",
+            entity="single-shot-robot",
+            name="full-skill",
+        ),
+    ),
+]
+visualizer = dict(
+    type="SegLocalVisualizer", vis_backends=vis_backends, name="visualizer", alpha=0.6
+)

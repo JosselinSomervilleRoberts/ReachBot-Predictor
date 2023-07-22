@@ -1,6 +1,9 @@
 # Custom ignores
 *.pth
 datasets/
+datasets_2/
+debug_output/
+refactored/
 !mmselfsup/mmselfsup/datasets/
 !mmsegmentation/mmseg/datasets/
 !mmsegmentation/configs/_base_/datasets/
