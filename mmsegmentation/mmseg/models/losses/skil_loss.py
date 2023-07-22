@@ -126,6 +126,9 @@ def skil_loss(
     thinner: bool = False,
 ):
     print(pred.shape, target.shape)
+    pred = pred.float()[:, 1, :, :]
+    # pred = pred.float()
+    target = target.float()
     assert pred.shape[0] == target.shape[0]
     if thinner:
         ground_truth_skeleton = soft_skeletonize_thin(target, iterations)
@@ -180,6 +183,8 @@ class SkilLoss(nn.Module):
         pred = F.softmax(pred, dim=1)
 
         loss = self.loss_weight * skil_loss(pred, target)
+
+        return loss
 
     @property
     def loss_name(self):

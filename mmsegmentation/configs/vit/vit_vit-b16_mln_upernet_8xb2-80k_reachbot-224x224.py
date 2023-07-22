@@ -4,11 +4,11 @@ _base_ = [
     "../_base_/default_runtime.py",
     "../_base_/schedules/schedule_80k.py",
 ]
-crop_size = (224, 224)
+crop_size = (64, 64)
 data_preprocessor = dict(size=crop_size)
 model = dict(
     data_preprocessor=data_preprocessor,
-    pretrained="pretrain/vit_base_patch16_224.pth",
+    pretrained="pretrain/upernet_vit-b16_mln_512x512_80k_ade20k_20210624_130547-0403cee1_fix.pth",
     decode_head=dict(num_classes=2),
     auxiliary_head=dict(num_classes=2),
 )
@@ -18,7 +18,7 @@ model = dict(
 optim_wrapper = dict(
     _delete_=True,
     type="OptimWrapper",
-    optimizer=dict(type="AdamW", lr=0.00006, betas=(0.9, 0.999), weight_decay=0.01),
+    optimizer=dict(type="AdamW", lr=0.01, betas=(0.9, 0.999), weight_decay=0.01),
     paramwise_cfg=dict(
         custom_keys={
             "pos_embed": dict(decay_mult=0.0),
@@ -29,7 +29,7 @@ optim_wrapper = dict(
 )
 
 param_scheduler = [
-    dict(type="LinearLR", start_factor=1e-6, by_epoch=False, begin=0, end=1500),
+    dict(type="LinearLR", start_factor=1e-4, by_epoch=False, begin=0, end=1500),
     dict(
         type="PolyLR",
         eta_min=0.0,
@@ -40,7 +40,7 @@ param_scheduler = [
     ),
 ]
 
-train_cfg = dict(type="IterBasedTrainLoop", max_iters=1000, val_interval=10)
+train_cfg = dict(type="IterBasedTrainLoop", max_iters=80000, val_interval=8000)
 val_cfg = dict(type="ValLoop")
 test_cfg = dict(type="TestLoop")
 default_hooks = dict(
@@ -53,6 +53,6 @@ default_hooks = dict(
 )
 
 # By default, models are trained on 8 GPUs with 2 images per GPU
-train_dataloader = dict(batch_size=2)
-val_dataloader = dict(batch_size=1)
+train_dataloader = dict(batch_size=2, num_workers=0)
+val_dataloader = dict(batch_size=1, num_workers=0)
 test_dataloader = val_dataloader
