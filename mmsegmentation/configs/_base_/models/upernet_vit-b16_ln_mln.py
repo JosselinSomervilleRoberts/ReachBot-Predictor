@@ -48,10 +48,7 @@ model = dict(
         num_classes=19,
         norm_cfg=norm_cfg,
         align_corners=False,
-        loss_decode=[
-            dict(type="SkilLoss", loss_name="loss_skill", loss_weight=3.0),
-            dict(type="DiceLoss", loss_name="loss_dice", loss_weight=1.0),
-        ],
+        loss_decode=dict(type="CrossEntropyLoss", use_sigmoid=False, loss_weight=1.0),
     ),
     auxiliary_head=dict(
         type="FCNHead",
@@ -64,10 +61,7 @@ model = dict(
         num_classes=19,
         norm_cfg=norm_cfg,
         align_corners=False,
-        loss_decode=[
-            dict(type="SkilLoss", loss_name="loss_skill", loss_weight=3.0),
-            dict(type="DiceLoss", loss_name="loss_dice", loss_weight=1.0),
-        ],
+        loss_decode=dict(type="CrossEntropyLoss", use_sigmoid=False, loss_weight=0.4),
     ),
     # model training and testing settings
     train_cfg=dict(),
