@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 from .smooth_gaussian_diffusion import apply_smooth_gaussian_diffusion
 from .smooth_skeletonization import soft_skeletonize, soft_skeletonize_thin
 from .utils import get_class_weight, weighted_loss
-from .vizualization_utils import show_mask
+from .visualization_utils import Plotter
+from toolbox.printing import debug as debug_fn
 
 
 def soft_dice(
@@ -30,28 +31,58 @@ def soft_dice(
     return (numerator + epsilon) / (denominator + epsilon)
 
 
-def smooth_skeleton_dice_loss(
-    ground_truth: torch.Tensor,
+def threshold(x, val: float = 0.5, sharpness: float = 10.0):
+    """Soft threshold function.
+
+    Args:
+        x: Input tensor.
+        val: Threshold value.
+        sharpness: Sharpness of the threshold function.
+
+    Returns:
+        Thresholded tensor.
+    """
+    return 1 / (1 + torch.exp(-sharpness * (x - val)))
+
+
+@weighted_loss
+def skil_loss(
     prediction: torch.Tensor,
+    ground_truth: torch.Tensor,
+    use_dice: bool = True,
+    smooth_threshold_factor: float = 10.0,
     iterations: int = 10,
     border_size: int = 25,
     sigma: float = 10.0,
+    epsilon: float = 1e-6,
     thinner: bool = False,
     debug: bool = False,
     debug_path: str = None,
-) -> torch.Tensor:
+):
     """Smooth skeleton loss.
 
     Uses the smooth skeletonization function to compute the skeleton of the
-    ground truth and predicted masks. Then computes the DICE between the two
-    smoothly enlarged skeletons (with add_smooth_border_to_mask)
+    ground truth and predicted masks.
+    
+    If use_dice is true, then computes the dice loss between the two enlarged
+    skeletons.
+    
+    Id not, then computes the product between the predicted skeleton and the
+    ground truth skeleton enlarged and vice versa.
 
     Args:
         ground_truth: Ground truth mask.
         prediction: Predicted mask.
+        use_dice: If True, will use the dice loss, otherwise will use the
+            product loss.
+        smooth_threshold_factor: Factor to use for the soft threshold.
+            If negative, no threshold will be applied.
+            If positive, it should be greater than 1.
         iterations: Number of iterations for the soft skeletonization.
         border_size: Border size.
         sigma: Sigma of the Gaussian function.
+        epsilon: Epsilon used for numerical stability.
+        thinner: If True, will use the thin skeletonization.
         debug: If True, will make some plots to understand what is going on.
         debug_path: Path where to save the debug plots.
 
@@ -61,6 +92,19 @@ def smooth_skeleton_dice_loss(
     if debug:
         assert debug_path is not None, "debug_path must be provided if debug is True"
 
+    if smooth_threshold_factor < 0:
+        threshold_fn = lambda x: x
+    else:
+        assert smooth_threshold_factor >= 1, "smooth_threshold_factor must be greater than 1"
+        threshold_fn = lambda x: threshold(x, sharpness=smooth_threshold_factor)
+
+    # Format the prediciton and ground truth
+    # We only keep the class 1 as we do not want to evaluate the background.
+    prediction = threshold_fn(prediction[:, 1, :, :].float())
+    ground_truth = ground_truth.float()
+    assert prediction.shape[0] == ground_truth.shape[0]
+
+    # Smooth skeletonization
     if thinner:
         ground_truth_skeleton = soft_skeletonize_thin(ground_truth, iterations)
         prediction_skeleton = soft_skeletonize_thin(prediction, iterations)
@@ -68,6 +112,7 @@ def smooth_skeleton_dice_loss(
         ground_truth_skeleton = soft_skeletonize(ground_truth, iterations)
         prediction_skeleton = soft_skeletonize(prediction, iterations)
 
+    # Enlarge the skeleton
     ground_truth_border = apply_smooth_gaussian_diffusion(
         ground_truth_skeleton, border_size, sigma
     )
@@ -75,141 +120,45 @@ def smooth_skeleton_dice_loss(
         prediction_skeleton, border_size, sigma
     )
 
+    # Compute the loss
+    if use_dice:
+        loss: torch.Tensor = 1 - soft_dice(ground_truth_border, prediction_border)
+    else:
+        p1_num = torch.sum(ground_truth_border * prediction_skeleton, dim=(-2, -1))
+        p1_den = torch.sum(prediction_skeleton, dim=(-2, -1))
+        p1 = (p1_num + epsilon) / (p1_den + epsilon)
+
+        p2_num = torch.sum(prediction_border * ground_truth_skeleton, dim=(-2, -1))
+        p2_den = torch.sum(ground_truth_skeleton, dim=(-2, -1))
+        p2 = (p2_num + epsilon) / (p2_den + epsilon)
+
+        loss: torch.Tensor = 1 - torch.sqrt(p1 * p2)
+
+    # Debug if needed
     if debug:
         n_rows = 2
         n_cols = 4
 
-        numerator = ground_truth_border * prediction_border
-        denominator = ground_truth_border**2 + prediction_border**2
+        if use_dice:
+            numerator = ground_truth_border * prediction_border
+            denominator = ground_truth_border**2 + prediction_border**2
+        else:
+            numerator = ground_truth_border * prediction_skeleton
+            denominator = ground_truth_skeleton * prediction_border
 
-        plt.figure(figsize=(n_cols * 6, n_rows * 4))
-        plt.subplot(n_rows, n_cols, 1)
-        show_mask(ground_truth, "Ground truth")
-        plt.subplot(n_rows, n_cols, 2)
-        show_mask(ground_truth_skeleton, "Ground truth skeleton")
-        plt.subplot(n_rows, n_cols, 3)
-        show_mask(ground_truth_border, "Ground truth border")
-        plt.subplot(n_rows, n_cols, 4)
-        show_mask(numerator, "Loss numerator")
-        pl.subplot(n_rows, n_cols, 5)
-        show_mask(prediction, "Prediction")
-        plt.subplot(n_rows, n_cols, 6)
-        show_mask(prediction_skeleton, "Prediction skeleton")
-        plt.subplot(n_rows, n_cols, 7)
-        show_mask(prediction_border, "Prediction border")
-        plt.subplot(n_rows, n_cols, 8)
-        show_mask(denominator, "Loss denominator")
+        for batch_idx in range(prediction.shape[0]):
+            Plotter.start(n_rows, n_cols, debug_path)
+            Plotter.plot_mask(ground_truth[batch_idx], "Ground truth")
+            Plotter.plot_mask(ground_truth_skeleton[batch_idx], "Ground truth skeleton")
+            Plotter.plot_mask(ground_truth_border[batch_idx], "Ground truth border")
+            Plotter.plot_mask(numerator[batch_idx], "Loss first term")
+            Plotter.plot_mask(prediction[batch_idx], f"Prediction - Loss: {loss[batch_idx].item():.4f}")
+            Plotter.plot_mask(prediction_skeleton[batch_idx], "Prediction skeleton")
+            Plotter.plot_mask(prediction_border[batch_idx], "Prediction border")
+            Plotter.plot_mask(denominator[batch_idx], "Loss second term")
+            Plotter.finish()
 
-    dice_loss: float = 1 - soft_dice(ground_truth_border, prediction_border)
-    return dice_loss
-
-
-def smooth_skeleton_intersection_loss(
-    ground_truth: torch.Tensor,
-    prediction: torch.Tensor,
-    iterations: int = 10,
-    border_size: int = 25,
-    sigma: float = 10.0,
-    thinner: bool = False,
-    epsilon: float = 1e-6,
-    debug: bool = False,
-    debug_path: str = None,
-) -> torch.Tensor:
-    """Smooth skeleton loss.
-
-    Uses the smooth skeletonization function to compute the skeleton of the
-    ground truth and predicted masks. Then computes the product between the
-    predicted skeleton and the ground truth skeleton enlarged and vice versa.
-
-    Args:
-        ground_truth: Ground truth mask.
-        prediction: Predicted mask.
-        iterations: Number of iterations for the soft skeletonization.
-        border_size: Border size.
-        sigma: Sigma of the Gaussian function.
-
-    Returns:
-        Smooth skeleton loss.
-    """
-    if debug:
-        assert debug_path is not None, "debug_path must be provided if debug is True"
-
-    if thinner:
-        ground_truth_skeleton = soft_skeletonize_thin(ground_truth, iterations)
-        prediction_skeleton = soft_skeletonize_thin(prediction, iterations)
-    else:
-        ground_truth_skeleton = soft_skeletonize(ground_truth, iterations)
-        prediction_skeleton = soft_skeletonize(prediction, iterations)
-    ground_truth_border = apply_smooth_gaussian_diffusion(
-        ground_truth_skeleton, border_size, sigma
-    )
-    prediction_border = apply_smooth_gaussian_diffusion(
-        prediction_skeleton, border_size, sigma
-    )
-
-    p1_num = torch.sum(ground_truth_border * prediction_skeleton, dim=(-2, -1))
-    p1_den = torch.sum(prediction_skeleton, dim=(-2, -1))
-    p1 = (p1_num + epsilon) / (p1_den + epsilon)
-
-    p2_num = torch.sum(prediction_border * ground_truth_skeleton, dim=(-2, -1))
-    p2_den = torch.sum(ground_truth_skeleton, dim=(-2, -1))
-    p2 = (p2_num + epsilon) / (p2_den + epsilon)
-
-    if debug:
-        n_rows = 2
-        n_cols = 4
-
-        p1_tensor = ground_truth_border * prediction_skeleton
-        p2_tensor = prediction_border * ground_truth_skeleton
-
-        plt.figure(figsize=(n_cols * 6, n_rows * 4))
-        plt.subplot(n_rows, n_cols, 1)
-        show_mask(ground_truth, "Ground truth")
-        plt.subplot(n_rows, n_cols, 2)
-        show_mask(ground_truth_skeleton, "Ground truth skeleton")
-        plt.subplot(n_rows, n_cols, 3)
-        show_mask(ground_truth_border, "Ground truth border")
-        plt.subplot(n_rows, n_cols, 4)
-        show_mask(p1_tensor, "Loss P1")
-        pl.subplot(n_rows, n_cols, 5)
-        show_mask(prediction, "Prediction")
-        plt.subplot(n_rows, n_cols, 6)
-        show_mask(prediction_skeleton, "Prediction skeleton")
-        plt.subplot(n_rows, n_cols, 7)
-        show_mask(prediction_border, "Prediction border")
-        plt.subplot(n_rows, n_cols, 8)
-        show_mask(p2_tensor, "Loss P2")
-
-    return 1 - torch.sqrt(p1 * p2)
-
-
-@weighted_loss
-def skil_loss(
-    pred: torch.Tensor,
-    target: torch.Tensor,
-    iterations: int = 10,
-    border_size: int = 25,
-    sigma: float = 10.0,
-    thinner: bool = False,
-):
-    print(pred.shape, target.shape)
-    pred = pred.float()[:, 1, :, :]
-    # pred = pred.float()
-    target = target.float()
-    assert pred.shape[0] == target.shape[0]
-    if thinner:
-        ground_truth_skeleton = soft_skeletonize_thin(target, iterations)
-        prediction_skeleton = soft_skeletonize_thin(pred, iterations)
-    else:
-        ground_truth_skeleton = soft_skeletonize(target, iterations)
-        prediction_skeleton = soft_skeletonize(pred, iterations)
-    ground_truth_border = apply_smooth_gaussian_diffusion(
-        ground_truth_skeleton, border_size, sigma
-    )
-    prediction_border = apply_smooth_gaussian_diffusion(
-        prediction_skeleton, border_size, sigma
-    )
-    return 1 - soft_dice(ground_truth_border, prediction_border)
+    return loss
 
 
 @MODELS.register_module()
@@ -227,6 +176,13 @@ class SkilLoss(nn.Module):
         loss_weight=1.0,
         ignore_index=255,
         loss_name="loss_skil",
+        sigma: float = 10.0,
+        border_size: int = 25,
+        iterations: int = 10,
+        smooth_threshold_factor: float = 10.0,
+        thinner: bool = False,
+        use_dice: bool = True,
+        epsilon: float = 1e-6,
         debug: bool = False,
         debug_path: str = None,
         **kwargs,
@@ -240,8 +196,16 @@ class SkilLoss(nn.Module):
         self.loss_weight = loss_weight
         self.ignore_index = ignore_index
         self._loss_name = loss_name
+
         self._debug = debug
         self._debug_path = debug_path
+        self._sigma = sigma
+        self._border_size = border_size
+        self._iterations = iterations
+        self._smooth_threshold_factor = smooth_threshold_factor
+        self._thinner = thinner
+        self._use_dice = use_dice
+        self._epsilon = epsilon
 
     def forward(
         self,
@@ -253,7 +217,19 @@ class SkilLoss(nn.Module):
         reduction = reduction_override if reduction_override else self.reduction
         pred = F.softmax(pred, dim=1)
 
-        loss = self.loss_weight * skil_loss(pred, target, debug=debug, debug_path=debug_path)
+        loss = self.loss_weight * skil_loss(
+            pred,
+            target,
+            use_dice=self._use_dice,
+            smooth_threshold_factor=self._smooth_threshold_factor,
+            iterations=self._iterations,
+            border_size=self._border_size,
+            sigma=self._sigma,
+            epsilon=self._epsilon,
+            thinner=self._thinner,
+            debug=self._debug,
+            debug_path=self._debug_path
+            )
 
         return loss
 
