@@ -30,32 +30,18 @@ num_epochs = 100
 # ================================= #
 
 
-# Associates a model name to its default weights
-default_checkpoint = {
-    "vit_vit-b16_mln_upernet": "pretrain/upernet_vit-b16_mln_512x512_80k_ade20k_20210624_130547-0403cee1_fix.pth"
-}
-
-# Associates a loss to its class and name
-losses_mappings = {
-    "skil": ("SkilLoss", "loss_skill"),
-    "dice": ("DiceLoss", "loss_dice"),
-}
-
-
-
 # Auto batch size and crop size
 from custom_configs.memory import *
 
 
+# Imports
+from custom_configs.main import default_checkpoint, losses_mappings, datasets_mappings, schedules_mappings
+import importlib
+
+
 # Dataset
-if DATASET == "cracks_cropped":
-    from custom_configs.datasets.cracks_cropped import *
-elif DATASET == "cracks_full":
-    from custom_configs.datasets.cracks_full import *
-elif DATASET == "boulders_cropped":
-    from custom_configs.datasets.boulders_cropped import *
-elif DATASET == "boulders_full":
-    from custom_configs.datasets.boulders_full import *
+if DATASET in datasets_mappings:
+    dataset_module = importlib.import_module(datasets_mappings[DATASET])
 else:
     raise Exception(f"Unknown dataset: {DATASET}")
 (
@@ -64,15 +50,20 @@ else:
     val_dataloader,
     train_pipeline,
     test_pipeline,
-) = get_dataset(crop_size, train_batch_size)
+    dataset_type,
+    data_root,
+    num_training_samples,
+) = dataset_module.get_dataset(crop_size, train_batch_size)
+del dataset_module
 
 
 # Learning rate
-if LR == "aggressive":
-    from custom_configs.schedules.aggressive import *
+if LR in schedules_mappings:
+    lr_module = importlib.import_module(schedules_mappings[LR])
 else:
-    raise Exception(f"Unknown LR schedule: {LR}")
-param_scheduler = get_scheduler(num_epochs * num_training_samples // train_batch_size)
+    raise Exception(f"Unknown learning rate schedule: {LR}")
+param_scheduler = lr_module.get_scheduler(num_epochs * num_training_samples // train_batch_size)
+del lr_module
 
 
 # Metrics
