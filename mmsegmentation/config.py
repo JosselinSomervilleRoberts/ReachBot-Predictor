@@ -51,7 +51,7 @@ DEBUG_STEP_INTERVAL = -1
 SAVE_EPOCH_INTERVAL = -1
 VISUALIZE_ONE_OUT_OF = -1
 EVAL_EPOCH_INTERVAL = 5
-USE_WANDB = False
+USE_WANDB = True
 
 # # DEBUGGING (to see what is happening)
 # # Debugging, logging, few visualization, no saving, metrics every few epochs
@@ -117,7 +117,7 @@ test_evaluator = val_evaluator
 
 
 # Make sure to evaluate every EVAL_EPOCH_INTERVAL epochs
-assert EVAL_EPOCH_INTERVAL > 1, "EVAL_EPOCH_INTERVAL must be > 1"
+assert EVAL_EPOCH_INTERVAL > 0, "EVAL_EPOCH_INTERVAL must be > 0"
 train_cfg = dict(
     type="IterBasedTrainLoop",
     max_iters=num_epochs * num_training_samples // train_batch_size,
