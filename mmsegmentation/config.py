@@ -52,6 +52,7 @@ SAVE_EPOCH_INTERVAL = -1
 VISUALIZE_ONE_OUT_OF = -1
 EVAL_EPOCH_INTERVAL = 5
 USE_WANDB = True
+WANDB_PROJECT_SUFFIX = "_exp"
 
 # # DEBUGGING (to see what is happening)
 # # Debugging, logging, few visualization, no saving, metrics every few epochs
@@ -61,6 +62,7 @@ USE_WANDB = True
 # VISUALIZE_ONE_OUT_OF = 5
 # EVAL_EPOCH_INTERVAL = 3
 # USE_WANDB = False
+# WANDB_PROJECT_SUFFIX = "_debug" # Just in case, normally not used
 
 # # PRODUCTION (to train a model and save the results)
 # # No debugging but logging, visualization, saving, metrics every epoch
@@ -70,6 +72,7 @@ USE_WANDB = True
 # VISUALIZE_ONE_OUT_OF = 1
 # EVAL_EPOCH_INTERVAL = 1
 # USE_WANDB = True
+# WANDB_PROJECT_SUFFIX = "_prod"
 
 # ================================= #
 
@@ -183,7 +186,7 @@ if USE_WANDB:
         dict(
             type="WandbVisBackend",
             init_kwargs=dict(
-                project=DATASET + "_segmentation",
+                project=DATASET + "_segmentation" + WANDB_PROJECT_SUFFIX,
                 entity="single-shot-robot",
                 name=WANDB_RUN_NAME,
             ),
