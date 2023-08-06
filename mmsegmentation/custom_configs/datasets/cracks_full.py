@@ -10,7 +10,7 @@ def get_dataset(crop_size, train_batch_size):
         dict(type="LoadImageFromFile"),
         dict(type="LoadAnnotations", reduce_zero_label=False),
         dict(
-            type="RandomResize", scale=(1024, 256), ratio_range=(0.5, 2.0), keep_ratio=True
+            type="RandomResize", scale=(1024, min(crop_size[0], crop_size[1])), ratio_range=(0.5, 2.0), keep_ratio=True
         ),
         dict(type="RandomCrop", crop_size=crop_size, cat_max_ratio=0.75),
         dict(type="RandomFlip", prob=0.5),
@@ -21,7 +21,7 @@ def get_dataset(crop_size, train_batch_size):
         dict(type="LoadImageFromFile"),
         # add loading annotation after ``Resize`` because ground truth
         # does not need to do resize data transform
-        dict(type="Resize", scale=(1024, 256), keep_ratio=True),
+        dict(type="Resize", scale=(1024, min(crop_size[0], crop_size[1])), keep_ratio=True),
         dict(type="LoadAnnotations", reduce_zero_label=False),
         dict(type="PackSegInputs"),
     ]
