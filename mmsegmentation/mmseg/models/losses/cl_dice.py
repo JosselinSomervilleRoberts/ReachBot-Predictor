@@ -9,6 +9,7 @@ from .smooth_skeletonization import soft_skeletonize, soft_skeletonize_thin
 from .utils import get_class_weight, weighted_loss
 from .visualization_utils import Plotter
 from toolbox.printing import debug as debug_fn
+from typing import Optional
 
 
 def cl_dice(
@@ -104,13 +105,13 @@ def cl_dice_loss(
         n_rows = 2
         n_cols = 2
 
-        for batch_idx in [0]:
+        for batch_idx in range(prediction.shape[0]):
             Plotter.start(n_rows, n_cols, debug_path)
             Plotter.plot_mask(ground_truth[batch_idx], "Ground truth")
             Plotter.plot_mask(ground_truth_skeleton[batch_idx], "Ground truth skeleton")
             Plotter.plot_mask(prediction[batch_idx], f"Prediction - ClLoss: {loss[batch_idx].item():.4f}")
             Plotter.plot_mask(prediction_skeleton[batch_idx], "Prediction skeleton")
-            Plotter.finish()
+            Plotter.finish(name = "cl_dice_loss")
 
     return loss
 
@@ -133,11 +134,17 @@ class ClDiceLoss(nn.Module):
         iterations: int = 10,
         thinner: bool = False,
         epsilon: float = 1e-6,
-        debug: bool = True,
-        debug_path: str = "/media/jsomerviller/SSD2/output",
+        debug_every: int = -1,
+        debug_path: Optional[str] = None,
         **kwargs,
     ):
         super().__init__()
+
+        if debug_every > 0:
+            assert debug_path is not None, "debug_path must be provided if debug_every > 0"
+        self._debug_every = debug_every
+        self._debug_path = debug_path
+        self._debug_idx = 0
 
         # add asserts for args
 
@@ -147,8 +154,6 @@ class ClDiceLoss(nn.Module):
         self.ignore_index = ignore_index
         self._loss_name = loss_name
 
-        self._debug = debug
-        self._debug_path = debug_path
         self._iterations = iterations
         self._thinner = thinner
         self._epsilon = epsilon
@@ -169,9 +174,10 @@ class ClDiceLoss(nn.Module):
             iterations=self._iterations,
             epsilon=self._epsilon,
             thinner=self._thinner,
-            debug=self._debug,
+            debug=self._debug_every > 0 and self._debug_idx % self._debug_every == 0,
             debug_path=self._debug_path
             )
+        self._debug_idx += 1
 
         return loss
 

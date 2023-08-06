@@ -9,11 +9,13 @@ _base_ = ["custom_configs/models/vit-b16_mln_upernet.py",]
 # string
 DATASET = "cracks_full"
 
-# Define the loss (from custom_configs/losses)
+# Define the loss (from custom_configs/main)
 # dictionnary mapping loss to coefficient
 LOSSES = {
-    "skil": 3.0,
-    "dice": 1.0,
+    #"skil": 3.0,
+    "dice": 3.0,
+    "cross_entropy": 1.0,
+    "cl_dice": 3.0,
 }
 
 # Define the learning rate schedule (from custom_configs/schedules)
@@ -27,6 +29,10 @@ CHECKPOINT = None
 # Number of epochs to train for
 # int
 num_epochs = 100
+
+# Debug mode
+DEBUG_EVERY = 10
+DEBUG_PATH = "/media/jsomerviller/SSD2/output"
 # ================================= #
 
 
@@ -67,7 +73,7 @@ del lr_module
 
 
 # Metrics
-val_evaluator = dict(type="ReachbotMetric")
+val_evaluator = dict(type="ReachbotOldMetric")
 test_evaluator = val_evaluator
 
 
@@ -91,7 +97,7 @@ model = dict(
     decode_head=dict(
         num_classes=2,
         loss_decode=[
-            dict(type=losses_mappings[loss_name][0], loss_name=losses_mappings[loss_name][1], loss_weight=LOSSES[loss_name])
+            dict(type=losses_mappings[loss_name][0], loss_name=losses_mappings[loss_name][1], loss_weight=LOSSES[loss_name], debug_every=DEBUG_EVERY, debug_path=DEBUG_PATH)
             for loss_name in LOSSES
         ],
     ),
