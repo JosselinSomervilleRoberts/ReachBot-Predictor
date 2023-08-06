@@ -2,6 +2,8 @@
 losses_mappings = {
     "skil": ("SkilLoss", "loss_skill"),
     "dice": ("DiceLoss", "loss_dice"),
+    "cross_entropy": ("CrossEntropyLoss", "loss_ce"),
+    "cl_dice": ("ClDiceLoss", "loss_cl_dice"),
 }
 
 # Associates a model name to its default weights
