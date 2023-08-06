@@ -55,13 +55,16 @@ def crack_metrics(
     iou = intersection / union
     dice = 2 * intersection / (intersection + union)
 
+    coef_avg = [1, 2, 0.5, 0.5, 0.5]
+    avg = np.sum([coef_avg[i] * x for i, x in enumerate([length_ratio, line_distance_score, width_ratio, iou, dice])]) / np.sum(coef_avg)
 
     results = {
         'length': length_ratio,
         'line_distance': line_distance_score,
         'width': width_ratio,
         'iou': iou,
-        'dice': dice
+        'dice': dice,
+        'avg': avg
     }
     return results
 
