@@ -9,6 +9,7 @@ from .smooth_skeletonization import soft_skeletonize, soft_skeletonize_thin
 from .utils import get_class_weight, weighted_loss
 from .visualization_utils import Plotter
 from toolbox.printing import debug as debug_fn
+from toolbox.printing import print_color
 from typing import Optional
 
 
@@ -55,7 +56,7 @@ def skil_loss(
     iterations: int = 10,
     border_size: int = 25,
     border_factor: float = 0.9,
-    epsilon: float = 1e-6,
+    epsilon: float = 0.01,
     thinner: bool = False,
     debug: bool = False,
     debug_path: str = None,
@@ -129,7 +130,7 @@ def skil_loss(
 
     # Compute the loss
     if use_dice:
-        loss: torch.Tensor = 1 - soft_dice(ground_truth_border, prediction_border)
+        loss: torch.Tensor = 1 - soft_dice(ground_truth_border, prediction_border, epsilon=epsilon)
     else:
         p1_num = torch.sum(ground_truth_border * prediction_skeleton, dim=(-2, -1))
         p1_den = torch.sum(prediction_skeleton, dim=(-2, -1))
@@ -147,22 +148,23 @@ def skil_loss(
         n_cols = 4
 
         if use_dice:
-            numerator = ground_truth_border * prediction_border
-            denominator = ground_truth_border**2 + prediction_border**2
+            first_term = 1 - (ground_truth_border * prediction_border + epsilon) / (ground_truth_border**2 + prediction_border**2 + epsilon)
+            second_term = None
         else:
-            numerator = ground_truth_border * prediction_skeleton
-            denominator = ground_truth_skeleton * prediction_border
+            first_term = 1 - (ground_truth_border * prediction_skeleton + epsilon) / (prediction_skeleton + epsilon)
+            second_term = 1 - (prediction_border * ground_truth_skeleton + epsilon) / (ground_truth_skeleton + epsilon)
 
         for batch_idx in range(prediction.shape[0]):
             Plotter.start(n_rows, n_cols, debug_path)
             Plotter.plot_mask(ground_truth[batch_idx], "Ground truth")
             Plotter.plot_mask(ground_truth_skeleton[batch_idx], "Ground truth skeleton")
             Plotter.plot_mask(ground_truth_border[batch_idx], "Ground truth border")
-            Plotter.plot_mask(numerator[batch_idx], "Loss first term")
+            Plotter.plot_mask(first_term[batch_idx], "Loss first term")
             Plotter.plot_mask(prediction[batch_idx], f"Prediction - Loss: {loss[batch_idx].item():.4f}")
             Plotter.plot_mask(prediction_skeleton[batch_idx], "Prediction skeleton")
             Plotter.plot_mask(prediction_border[batch_idx], "Prediction border")
-            Plotter.plot_mask(denominator[batch_idx], "Loss second term")
+            if second_term is not None:
+                Plotter.plot_mask(second_term[batch_idx], "Loss second term")
             Plotter.finish(name = "skil_loss")
 
     return loss
@@ -183,13 +185,13 @@ class SkilLoss(nn.Module):
         loss_weight=1.0,
         ignore_index=255,
         loss_name="loss_skil",
-        border_factor: float = 0.9,
-        border_size: int = 25,
+        border_factor: float = 0.92,
+        border_size: int = 40,
         iterations: int = 50,
         smooth_threshold_factor: float = 10.0,
         thinner: bool = False,
         use_dice: bool = True,
-        epsilon: float = 1e-6,
+        epsilon: float = 0.01,
         debug_every: int = -1,
         debug_path: Optional[str] = None,
         **kwargs,
@@ -217,6 +219,15 @@ class SkilLoss(nn.Module):
         self._thinner = thinner
         self._use_dice = use_dice
         self._epsilon = epsilon
+
+        self.print_params()
+
+    def print_params(self, color="blue"):
+        print_color(f"\nLoss {self._loss_name} params:", color=color)
+        for key, value in self.__dict__.items():
+            if key[0] == "_":
+                key = key[1:]
+            print_color(f"   - {key}: {value}", color=color)
 
     def forward(
         self,
@@ -258,3 +269,27 @@ class SkilLoss(nn.Module):
             str: The name of this loss item.
         """
         return self._loss_name
+    
+
+@MODELS.register_module()
+class SkilLossDice(SkilLoss):
+
+    def __init__(self, **kwargs):
+        if "use_dice" in kwargs:
+            assert kwargs["use_dice"] == True, "use_dice must be True for SkilLossDice"
+            kwargs.pop("use_dice")
+        if "loss_name" in kwargs:
+            kwargs.pop("loss_name")
+        super().__init__(**kwargs, use_dice=True, loss_name="loss_skil_dice")
+
+
+@MODELS.register_module()
+class SkilLossProduct(SkilLoss):
+
+    def __init__(self, **kwargs):
+        if "use_dice" in kwargs:
+            assert kwargs["use_dice"] == False, "use_dice must be False for SkilLossProduct"
+            kwargs.pop("use_dice")
+        if "loss_name" in kwargs:
+            kwargs.pop("loss_name")
+        super().__init__(**kwargs, use_dice=False, loss_name="loss_skil_product")

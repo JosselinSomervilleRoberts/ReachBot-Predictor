@@ -16,7 +16,7 @@ DATASET = "cracks_full"
 # Define the loss (from custom_configs/main)
 # dictionnary mapping loss to coefficient
 LOSSES = {
-    #"skil": 3.0,
+    "skil_product": (3.0, dict(epsilon = 12)),
     "dice": 3.0,
     "cross_entropy": 1.0,
     "cl_dice": 3.0,

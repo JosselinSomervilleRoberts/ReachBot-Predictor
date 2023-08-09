@@ -11,7 +11,7 @@ from .dice_loss import DiceLoss
 from .focal_loss import FocalLoss
 from .lovasz_loss import LovaszLoss
 from .ohem_cross_entropy_loss import OhemCrossEntropy
-from .skil_loss import SkilLoss
+from .skil_loss import SkilLossProduct, SkilLossDice
 from .cl_dice import ClDiceLoss
 from .tversky_loss import TverskyLoss
 from .utils import reduce_loss, weight_reduce_loss, weighted_loss
@@ -32,6 +32,7 @@ __all__ = [
     "TverskyLoss",
     "OhemCrossEntropy",
     "BoundaryLoss",
-    "SkilLoss",
+    "SkilLossDice",
+    "SkilLossProduct",
     "ClDiceLoss"
 ]

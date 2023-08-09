@@ -1,6 +1,7 @@
 # Associates a loss to its class and name
 losses_mappings = {
-    "skil": ("SkilLoss", "loss_skill"),
+    "skil_dice": ("SkilLossDice", "loss_skill_dice"),
+    "skil_product": ("SkilLossProduct", "loss_skill_product"),
     "dice": ("DiceLoss", "loss_dice"),
     "cross_entropy": ("CrossEntropyLoss", "loss_ce"),
     "cl_dice": ("ClDiceLoss", "loss_cl_dice"),
