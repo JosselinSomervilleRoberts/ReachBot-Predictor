@@ -16,7 +16,8 @@ config = configparser.ConfigParser()
 config.read("config.ini")
 LABELBOX_DATASET_FOLDER = config["PATHS"]["LABELBOX_DATASET"]
 LB_API_KEY = config["SECRETS"]["LABELBOX_API_KEY"]
-LB_PROJECT_ID = config["SECRETS"]["LABELBOX_PROJECT_HM_ID"]
+print("API key:", LB_API_KEY)
+LB_PROJECT_ID = config["SECRETS"]["LABELBOX_PROJECT_ID"]
 CLASS_TO_COLOR = {
     "edge": [int(c) for c in config["DISPLAY"]["COLOR_EDGE"].split(" ")],
     "crack": [int(c) for c in config["DISPLAY"]["COLOR_CRACK"].split(" ")],
@@ -50,7 +51,7 @@ def get_classes(image_number: int) -> List[str]:
     return classes
 
 
-def generate_labelbox_dataset(max_try: int = 10) -> None:
+def generate_labelbox_dataset(max_try: int = 10, keep_only_done: bool = True) -> None:
     import labelbox
 
     # Get the labelbox project
@@ -60,7 +61,12 @@ def generate_labelbox_dataset(max_try: int = 10) -> None:
     print("Downloading labels...")
     labels = project.label_generator()
     labels = project.export_labels(download=True)
-    print("Done")
+
+    num_labels = len(labels)
+    if keep_only_done:
+        labels = [label for label in labels if label["DataRow Workflow Info"]["taskName"] == "Done"]
+        print(f"Got originally {num_labels} labels, keeping only {len(labels)} which are done")
+    print(f"Done, got {len(labels)} labels")
 
     # Create folder name "dataset" if it doesn't exist
     import os

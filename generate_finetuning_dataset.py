@@ -20,7 +20,7 @@ from generate_labelbox_dataset import (
 config = configparser.ConfigParser()
 config.read("config.ini")
 
-CLASSES = ["edge", "boulder", "crack", "rough_patch"]
+CLASSES = ["crack"]
 LABELBOX_DATASET_FOLDER = config["PATHS"]["LABELBOX_DATASET"]
 FINETUNE_DATASET_FOLDER = config["PATHS"]["FINETUNE_DATASET"]
 
