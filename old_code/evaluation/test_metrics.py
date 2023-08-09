@@ -17,7 +17,7 @@ from compute_metrics import compute_all_metrics, to_np, log_metrics
 # Load the image and the ground truth segmentation
 # config
 config = configparser.ConfigParser()
-config.read('config.ini')
+config.read('config.ini') # TODO: Fix config path and variables
 FINETUNE_DATASET_FOLDER = config["PATHS"]["FINETUNE_DATASET"]
 path_image = os.path.join(FINETUNE_DATASET_FOLDER, "crack", "images", "0.png")
 path_mask = os.path.join(FINETUNE_DATASET_FOLDER, "crack", "masks", "0.png")

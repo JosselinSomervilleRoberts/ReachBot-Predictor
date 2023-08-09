@@ -16,7 +16,7 @@ from generate_finetuning_dataset import convert_mask_to_binary, load_gt_masks
 
 # config
 config = configparser.ConfigParser()
-config.read("config.ini")
+config.read("config.ini") # TODO: Fix config path and variables
 CLASSES = ["edge", "boulder", "crack", "rough_patch"]
 LABELBOX_DATASET_FOLDER = config["PATHS"]["LABELBOX_DATASET"]
 FINETUNE_DATASET_FOLDER = config["PATHS"]["FINETUNE_DATASET"]

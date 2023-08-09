@@ -13,7 +13,7 @@ from generate_finetuning_dataset import convert_mask_to_binary, load_gt_masks
 
 # config
 config = configparser.ConfigParser()
-config.read("config.ini")
+config.read("config.ini") # TODO: Fix config path and variables
 SELFSUP_SOURCE_DATASET_FOLDER = config["PATHS"]["SELFSUP_SOURCE_DATASET"]
 SELFSUP_DATASET_FOLDER = config["PATHS"]["SELFSUP_DATASET"]
 
