@@ -1,4 +1,10 @@
-## Installation
+# Crack
+
+To get the data, check the `dataset_builder` `README` file.
+
+To train a model, check the `mmsegmentation` `README` file.
+
+<!-- ## Installation
 
 Run the following commands
 
@@ -79,4 +85,4 @@ Pretrain model from scratch
 
 ```bash
 python tools/train.py configs/selfsup/mocov3/mocov3_resnet50_8xb512-amp-coslr-100e_reachbot.py
-```
+``` -->
