@@ -8,6 +8,9 @@ import torch.nn.functional as F
 from mmseg.registry import MODELS
 from .utils import get_class_weight, weight_reduce_loss
 
+from typing import Optional
+from toolbox.printing import warn
+
 
 def cross_entropy(pred,
                   label,
@@ -222,8 +225,18 @@ class CrossEntropyLoss(nn.Module):
                  class_weight=None,
                  loss_weight=1.0,
                  loss_name='loss_ce',
-                 avg_non_ignore=False):
+                 avg_non_ignore=False,
+                 debug_every: int = -1,
+                 debug_path: Optional[str] = None):
         super().__init__()
+
+        if debug_every > 0:
+            assert debug_path is not None
+            warn("Debug mode does not do anything for cross entropy loss.")
+        self._debug_every = debug_every
+        self._debug_path = debug_path
+        self._debug_idx = 0
+
         assert (use_sigmoid is False) or (use_mask is False)
         self.use_sigmoid = use_sigmoid
         self.use_mask = use_mask
@@ -278,6 +291,7 @@ class CrossEntropyLoss(nn.Module):
             avg_non_ignore=self.avg_non_ignore,
             ignore_index=ignore_index,
             **kwargs)
+        self._debug_idx += 1
         return loss_cls
 
     @property

@@ -85,11 +85,13 @@ class Plotter:
         Plotter.started = True
 
     @staticmethod
-    def finish():
+    def finish(name: Optional[str] = None):
         """Finish a plot."""
         if not Plotter.started:
             raise Exception("You must call start() before calling finish()!")
-        plt.savefig(f"{Plotter.base_path}/similarity_mask_{Plotter.img_index}.png")
+        if name is None:
+            name = "img"
+        plt.savefig(f"{Plotter.base_path}/{Plotter.img_index}_{name}.png")
         plt.close()
         Plotter.subplot_index = 0
         Plotter.img_index += 1

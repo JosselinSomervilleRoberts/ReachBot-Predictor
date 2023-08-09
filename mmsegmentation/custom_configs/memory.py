@@ -18,7 +18,7 @@ memory_available = get_cuda_free_Go()
 print(f"Detected {memory_available:.2f} GB of CUDA memory available")
 
 if memory_available >= 16:
-    crop_size = (256, 256)
+    crop_size = (512, 512)
     train_batch_size = 8
 elif memory_available >= 8:
     crop_size = (128, 128)
@@ -27,7 +27,7 @@ elif memory_available >= 4:
     crop_size = (64, 64)
     train_batch_size = 2
 elif memory_available >= 2:
-    crop_size = (64, 64)
-    train_batch_size = 1
+    crop_size = (32, 32)
+    train_batch_size = 2
 else:
     raise Exception("Not enough CUDA memory available")

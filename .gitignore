@@ -1,6 +1,6 @@
 # Custom ignores
 *.pth
-datasets/
+/datasets/
 datasets_2/
 debug_output/
 refactored/

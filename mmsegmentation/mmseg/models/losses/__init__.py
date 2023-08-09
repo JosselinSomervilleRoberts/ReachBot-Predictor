@@ -12,6 +12,7 @@ from .focal_loss import FocalLoss
 from .lovasz_loss import LovaszLoss
 from .ohem_cross_entropy_loss import OhemCrossEntropy
 from .skil_loss import SkilLoss
+from .cl_dice import ClDiceLoss
 from .tversky_loss import TverskyLoss
 from .utils import reduce_loss, weight_reduce_loss, weighted_loss
 
@@ -32,4 +33,5 @@ __all__ = [
     "OhemCrossEntropy",
     "BoundaryLoss",
     "SkilLoss",
+    "ClDiceLoss"
 ]

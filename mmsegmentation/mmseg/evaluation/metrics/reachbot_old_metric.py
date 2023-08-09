@@ -6,14 +6,15 @@ from mmengine.logging import MMLogger, print_log
 from mmseg.registry import METRICS
 from prettytable import PrettyTable
 
-# from .reachbot_metric_utils import compute_all_metrics_on_single_image
-from .metrics import crack_metrics
+from .reachbot_metric_utils import compute_all_metrics_on_single_image
+
 
 @METRICS.register_module()
-class ReachbotMetric(BaseMetric):
+class ReachbotOldMetric(BaseMetric):
     def __init__(
         self,
         sigma_factor: float = 0.02,
+        threshold: float = 0.5,
         save_predictions: bool = False,
         output_dir: str = "preds",
         collect_device: str = "cpu",
@@ -27,6 +28,7 @@ class ReachbotMetric(BaseMetric):
         """
         super().__init__(collect_device=collect_device, prefix=prefix)
         self.sigma_factor = sigma_factor
+        self.threshold = threshold
 
     def process(self, data_batch: dict, data_samples: Sequence[dict]) -> None:
         """Process one batch of data and data_samples.
@@ -42,11 +44,11 @@ class ReachbotMetric(BaseMetric):
             pred_label = data_sample["pred_sem_seg"]["data"].squeeze()
             label = data_sample["gt_sem_seg"]["data"].squeeze().to(pred_label)
             self.results.append(
-                crack_metrics(
+                compute_all_metrics_on_single_image(
                     ground_truth=label,
-                    prediction=pred_label,
+                    prediction_binary=pred_label,
                     sigma_factor=self.sigma_factor,
-                    crop=True,
+                    threshold=self.threshold,
                 )
             )
 

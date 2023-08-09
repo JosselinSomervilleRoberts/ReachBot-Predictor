@@ -8,6 +8,9 @@ import torch.nn.functional as F
 from mmseg.registry import MODELS
 from .utils import get_class_weight, weighted_loss
 
+from typing import Optional
+from toolbox.printing import warn
+
 
 @weighted_loss
 def dice_loss(pred,
@@ -79,8 +82,18 @@ class DiceLoss(nn.Module):
                  loss_weight=1.0,
                  ignore_index=255,
                  loss_name='loss_dice',
-                 **kwards):
+                 debug_every: int = -1,
+                 debug_path: Optional[str] = None,
+                 **kwargs):
         super().__init__()
+
+        if debug_every > 0:
+            assert debug_path is not None, "debug_path must be provided if debug_every > 0"
+            warn("Debug mode does not do anything for dice loss.")
+        self._debug_every = debug_every
+        self._debug_path = debug_path
+        self._debug_idx = 0
+
         self.smooth = smooth
         self.exponent = exponent
         self.reduction = reduction
@@ -120,6 +133,7 @@ class DiceLoss(nn.Module):
             exponent=self.exponent,
             class_weight=class_weight,
             ignore_index=self.ignore_index)
+        self._debug_idx += 1
         return loss
 
     @property
