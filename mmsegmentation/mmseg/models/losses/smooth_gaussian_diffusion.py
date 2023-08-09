@@ -4,7 +4,7 @@ from .smooth_skeletonization import soft_dilate
 
 
 def apply_smooth_gaussian_diffusion(
-    mask: torch.Tensor, border_size: int = 25, sigma: float = 10.0
+    mask: torch.Tensor, border_size: int = 25, factor: float = 0.9
 ) -> torch.Tensor:
     """Add a smooth border to a mask.
 
@@ -18,22 +18,18 @@ def apply_smooth_gaussian_diffusion(
     Args:
         mask: Input mask.
         border_size: Border size.
-        sigma: Sigma of the Gaussian function.
+        factor: between 0 and 1, the higher it is the more the mask will be
+            decreasing in terms of the distance to the input mask.
 
     Returns:
         Mask with smooth border.
     """
+    assert 0 <= factor <= 1, "Factor should be between 0 and 1"
+    assert border_size >= 0, "Border size should be positive"
 
     enlarged_mask = mask.clone()
-    expanded_mask = mask.clone()
     for d in range(border_size):
         new_enlarged_mask = soft_dilate(enlarged_mask)
-        border: torch.Tensor = new_enlarged_mask - enlarged_mask
-        expanded_mask = torch.where(
-            border == 1,
-            torch.exp(-border * (d + 1) ** 2 / (2 * sigma**2)),
-            expanded_mask,
-        )
-        enlarged_mask = new_enlarged_mask
+        enlarged_mask = factor * enlarged_mask + (1 - factor) * new_enlarged_mask
 
-    return expanded_mask
+    return enlarged_mask

@@ -75,7 +75,6 @@ def cl_dice_loss(
     if debug:
         assert debug_path is not None, "debug_path must be provided if debug is True"
 
-    
     # The random resize puts the value 255 to pad, which we remove and replace
     # by zero, the value of the background.
     ground_truth = torch.where(ground_truth>1, torch.zeros_like(ground_truth), ground_truth)

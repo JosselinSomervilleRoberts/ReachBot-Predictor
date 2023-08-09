@@ -54,7 +54,7 @@ def skil_loss(
     smooth_threshold_factor: float = 10.0,
     iterations: int = 10,
     border_size: int = 25,
-    sigma: float = 10.0,
+    border_factor: float = 0.9,
     epsilon: float = 1e-6,
     thinner: bool = False,
     debug: bool = False,
@@ -81,7 +81,7 @@ def skil_loss(
             If positive, it should be greater than 1.
         iterations: Number of iterations for the soft skeletonization.
         border_size: Border size.
-        sigma: Sigma of the Gaussian function.
+        border_factor: border_factor of the Gaussian function.
         epsilon: Epsilon used for numerical stability.
         thinner: If True, will use the thin skeletonization.
         debug: If True, will make some plots to understand what is going on.
@@ -92,6 +92,12 @@ def skil_loss(
     """
     if debug:
         assert debug_path is not None, "debug_path must be provided if debug is True"
+
+    # The random resize puts the value 255 to pad, which we remove and replace
+    # by zero, the value of the background.
+    ground_truth = torch.where(ground_truth>1, torch.zeros_like(ground_truth), ground_truth)
+    assert torch.max(ground_truth) <= 1, "The ground truth must be binary!"
+    assert torch.min(ground_truth) >= 0, "The ground truth must be binary!"
 
     if smooth_threshold_factor < 0:
         threshold_fn = lambda x: x
@@ -115,10 +121,10 @@ def skil_loss(
 
     # Enlarge the skeleton
     ground_truth_border = apply_smooth_gaussian_diffusion(
-        ground_truth_skeleton, border_size, sigma
+        ground_truth_skeleton, border_size, border_factor
     )
     prediction_border = apply_smooth_gaussian_diffusion(
-        prediction_skeleton, border_size, sigma
+        prediction_skeleton, border_size, border_factor
     )
 
     # Compute the loss
@@ -177,9 +183,9 @@ class SkilLoss(nn.Module):
         loss_weight=1.0,
         ignore_index=255,
         loss_name="loss_skil",
-        sigma: float = 10.0,
+        border_factor: float = 0.9,
         border_size: int = 25,
-        iterations: int = 10,
+        iterations: int = 50,
         smooth_threshold_factor: float = 10.0,
         thinner: bool = False,
         use_dice: bool = True,
@@ -204,7 +210,7 @@ class SkilLoss(nn.Module):
         self.ignore_index = ignore_index
         self._loss_name = loss_name
 
-        self._sigma = sigma
+        self._border_factor = border_factor
         self._border_size = border_size
         self._iterations = iterations
         self._smooth_threshold_factor = smooth_threshold_factor
@@ -229,7 +235,7 @@ class SkilLoss(nn.Module):
             smooth_threshold_factor=self._smooth_threshold_factor,
             iterations=self._iterations,
             border_size=self._border_size,
-            sigma=self._sigma,
+            border_factor=self._border_factor,
             epsilon=self._epsilon,
             thinner=self._thinner,
             debug=self._debug_every > 0 and self._debug_idx % self._debug_every == 0,
