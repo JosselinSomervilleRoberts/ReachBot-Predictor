@@ -22,10 +22,10 @@ pip install -e .
 
 ## Training
 
-You can edit `config.py` but make sure not to commit your changes.
+You **SHOULD NOT** edit `config.py`, instead copy it to make your own config `config_perso.py` in which you can make your changes *(Any file under the format `config_*.py` at the root will be ignored by git)*.
 Then simply run:
 ```bash
-python tools/train.py config.py
+python tools/train.py config_perso.py
 ```
 
 
