@@ -27,7 +27,15 @@ Then simply run:
 ```bash
 python tools/train.py config_perso.py
 ```
-
+You can trin several times a model with:
+```bash
+python tools/train_repeat.py --num_repeats 10 config_perso.py --amp
+```
+But make sure firsto to remove the need for a password for sudo access:
+```bash
+sudo visudo
+```
+and adding: `<YOUR-USERNAME> ALL = NOPASSWD : ALL` at the end of the file.
 
 ## Adding new models, datatasets, schedules
 
