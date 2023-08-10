@@ -182,13 +182,18 @@ vis_backends = [
     dict(type="LocalVisBackend"),
 ]
 if USE_WANDB:
+    # Generate a 10 character long random string
+    import random
+    import string
+    tag = "".join(random.choices(string.ascii_uppercase + string.digits, k=10))
     vis_backends.append(
         dict(
             type="WandbVisBackend",
             init_kwargs=dict(
                 project=DATASET + "_segmentation" + WANDB_PROJECT_SUFFIX,
                 entity="single-shot-robot",
-                name=WANDB_RUN_NAME,
+                name=WANDB_RUN_NAME +  "_" + tag,
+                group=WANDB_RUN_NAME
             ),
         ),
     )
