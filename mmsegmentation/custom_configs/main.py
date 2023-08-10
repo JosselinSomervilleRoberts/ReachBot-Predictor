@@ -16,6 +16,7 @@ default_checkpoint = {
 datasets_mappings = {
     "cracks_full": "custom_configs.datasets.cracks_full",
     "cracks_cropped": "custom_configs.datasets.cracks_cropped",
+    "cracks_full_combined": "custom_configs.datasets.cracks_full_combined",
 }
 
 # Associates a learning rate schedule name to its config file
