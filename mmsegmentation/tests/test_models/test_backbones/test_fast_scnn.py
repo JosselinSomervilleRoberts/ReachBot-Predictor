@@ -9,11 +9,15 @@ def test_fastscnn_backbone():
     with pytest.raises(AssertionError):
         # Fast-SCNN channel constraints.
         FastSCNN(
-            3, (32, 48),
-            64, (64, 96, 128), (2, 2, 1),
+            3,
+            (32, 48),
+            64,
+            (64, 96, 128),
+            (2, 2, 1),
             global_out_channels=127,
             higher_in_channels=64,
-            lower_in_channels=128)
+            lower_in_channels=128,
+        )
 
     # Test FastSCNN Standard Forward
     model = FastSCNN(

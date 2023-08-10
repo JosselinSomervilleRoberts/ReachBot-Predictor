@@ -65,10 +65,10 @@ def skil_loss(
 
     Uses the smooth skeletonization function to compute the skeleton of the
     ground truth and predicted masks.
-    
+
     If use_dice is true, then computes the dice loss between the two enlarged
     skeletons.
-    
+
     Id not, then computes the product between the predicted skeleton and the
     ground truth skeleton enlarged and vice versa.
 
@@ -96,14 +96,18 @@ def skil_loss(
 
     # The random resize puts the value 255 to pad, which we remove and replace
     # by zero, the value of the background.
-    ground_truth = torch.where(ground_truth>1, torch.zeros_like(ground_truth), ground_truth)
+    ground_truth = torch.where(
+        ground_truth > 1, torch.zeros_like(ground_truth), ground_truth
+    )
     assert torch.max(ground_truth) <= 1, "The ground truth must be binary!"
     assert torch.min(ground_truth) >= 0, "The ground truth must be binary!"
 
     if smooth_threshold_factor < 0:
         threshold_fn = lambda x: x
     else:
-        assert smooth_threshold_factor >= 1, "smooth_threshold_factor must be greater than 1"
+        assert (
+            smooth_threshold_factor >= 1
+        ), "smooth_threshold_factor must be greater than 1"
         threshold_fn = lambda x: threshold(x, sharpness=smooth_threshold_factor)
 
     # Format the prediciton and ground truth
@@ -130,7 +134,9 @@ def skil_loss(
 
     # Compute the loss
     if use_dice:
-        loss: torch.Tensor = 1 - soft_dice(ground_truth_border, prediction_border, epsilon=epsilon)
+        loss: torch.Tensor = 1 - soft_dice(
+            ground_truth_border, prediction_border, epsilon=epsilon
+        )
     else:
         p1_num = torch.sum(ground_truth_border * prediction_skeleton, dim=(-2, -1))
         p1_den = torch.sum(prediction_skeleton, dim=(-2, -1))
@@ -148,11 +154,17 @@ def skil_loss(
         n_cols = 4
 
         if use_dice:
-            first_term = 1 - (ground_truth_border * prediction_border + epsilon) / (ground_truth_border**2 + prediction_border**2 + epsilon)
+            first_term = 1 - (ground_truth_border * prediction_border + epsilon) / (
+                ground_truth_border**2 + prediction_border**2 + epsilon
+            )
             second_term = None
         else:
-            first_term = 1 - (ground_truth_border * prediction_skeleton + epsilon) / (prediction_skeleton + epsilon)
-            second_term = 1 - (prediction_border * ground_truth_skeleton + epsilon) / (ground_truth_skeleton + epsilon)
+            first_term = 1 - (ground_truth_border * prediction_skeleton + epsilon) / (
+                prediction_skeleton + epsilon
+            )
+            second_term = 1 - (prediction_border * ground_truth_skeleton + epsilon) / (
+                ground_truth_skeleton + epsilon
+            )
 
         for batch_idx in range(prediction.shape[0]):
             Plotter.start(n_rows, n_cols, debug_path)
@@ -160,12 +172,15 @@ def skil_loss(
             Plotter.plot_mask(ground_truth_skeleton[batch_idx], "Ground truth skeleton")
             Plotter.plot_mask(ground_truth_border[batch_idx], "Ground truth border")
             Plotter.plot_mask(first_term[batch_idx], "Loss first term")
-            Plotter.plot_mask(prediction[batch_idx], f"Prediction - Loss: {loss[batch_idx].item():.4f}")
+            Plotter.plot_mask(
+                prediction[batch_idx],
+                f"Prediction - Loss: {loss[batch_idx].item():.4f}",
+            )
             Plotter.plot_mask(prediction_skeleton[batch_idx], "Prediction skeleton")
             Plotter.plot_mask(prediction_border[batch_idx], "Prediction border")
             if second_term is not None:
                 Plotter.plot_mask(second_term[batch_idx], "Loss second term")
-            Plotter.finish(name = "skil_loss")
+            Plotter.finish(name="skil_loss")
 
     return loss
 
@@ -199,7 +214,9 @@ class SkilLoss(nn.Module):
         super().__init__()
 
         if debug_every > 0:
-            assert debug_path is not None, "debug_path must be provided if debug_every > 0"
+            assert (
+                debug_path is not None
+            ), "debug_path must be provided if debug_every > 0"
         self._debug_every = debug_every
         self._debug_path = debug_path
         self._debug_idx = 0
@@ -250,8 +267,8 @@ class SkilLoss(nn.Module):
             epsilon=self._epsilon,
             thinner=self._thinner,
             debug=self._debug_every > 0 and self._debug_idx % self._debug_every == 0,
-            debug_path=self._debug_path
-            )
+            debug_path=self._debug_path,
+        )
         self._debug_idx += 1
 
         return loss
@@ -269,11 +286,10 @@ class SkilLoss(nn.Module):
             str: The name of this loss item.
         """
         return self._loss_name
-    
+
 
 @MODELS.register_module()
 class SkilLossDice(SkilLoss):
-
     def __init__(self, **kwargs):
         if "use_dice" in kwargs:
             assert kwargs["use_dice"] == True, "use_dice must be True for SkilLossDice"
@@ -285,10 +301,11 @@ class SkilLossDice(SkilLoss):
 
 @MODELS.register_module()
 class SkilLossProduct(SkilLoss):
-
     def __init__(self, **kwargs):
         if "use_dice" in kwargs:
-            assert kwargs["use_dice"] == False, "use_dice must be False for SkilLossProduct"
+            assert (
+                kwargs["use_dice"] == False
+            ), "use_dice must be False for SkilLossProduct"
             kwargs.pop("use_dice")
         if "loss_name" in kwargs:
             kwargs.pop("loss_name")

@@ -18,20 +18,15 @@ def test_dm_head():
 
     # test with norm_cfg
     head = DMHead(
-        in_channels=8,
-        channels=4,
-        num_classes=19,
-        norm_cfg=dict(type='SyncBN'))
+        in_channels=8, channels=4, num_classes=19, norm_cfg=dict(type="SyncBN")
+    )
     assert _conv_has_norm(head, sync_bn=True)
 
     # fusion=True
     inputs = [torch.randn(1, 8, 23, 23)]
     head = DMHead(
-        in_channels=8,
-        channels=4,
-        num_classes=19,
-        filter_sizes=(1, 3, 5),
-        fusion=True)
+        in_channels=8, channels=4, num_classes=19, filter_sizes=(1, 3, 5), fusion=True
+    )
     if torch.cuda.is_available():
         head, inputs = to_cuda(head, inputs)
     assert head.fusion is True
@@ -44,11 +39,8 @@ def test_dm_head():
     # fusion=False
     inputs = [torch.randn(1, 8, 23, 23)]
     head = DMHead(
-        in_channels=8,
-        channels=4,
-        num_classes=19,
-        filter_sizes=(1, 3, 5),
-        fusion=False)
+        in_channels=8, channels=4, num_classes=19, filter_sizes=(1, 3, 5), fusion=False
+    )
     if torch.cuda.is_available():
         head, inputs = to_cuda(head, inputs)
     assert head.fusion is False

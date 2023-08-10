@@ -7,7 +7,9 @@ WANDB_RUN_NAME = "Skill"
 # Define the model here (2 modifications!) (from custom_configs/models)
 # string
 MODEL = "vit_vit-b16_mln_upernet"
-_base_ = ["custom_configs/models/vit-b16_mln_upernet.py",]
+_base_ = [
+    "custom_configs/models/vit-b16_mln_upernet.py",
+]
 
 # Define the dataset (from custom_configs/datasets)
 # string
@@ -16,7 +18,7 @@ DATASET = "cracks_full"
 # Define the loss (from custom_configs/main)
 # dictionnary mapping loss to coefficient
 LOSSES = {
-    "skil_product": (3.0, dict(epsilon = 12)),
+    "skil_product": (3.0, dict(epsilon=0.01)),
     "dice": 3.0,
     "cross_entropy": 1.0,
     "cl_dice": 3.0,
@@ -82,7 +84,12 @@ from custom_configs.memory import *
 
 
 # Imports
-from custom_configs.main import default_checkpoint, losses_mappings, datasets_mappings, schedules_mappings
+from custom_configs.main import (
+    default_checkpoint,
+    losses_mappings,
+    datasets_mappings,
+    schedules_mappings,
+)
 from toolbox.printing import warn
 import importlib
 
@@ -110,7 +117,9 @@ if LR in schedules_mappings:
     lr_module = importlib.import_module(schedules_mappings[LR])
 else:
     raise Exception(f"Unknown learning rate schedule: {LR}")
-param_scheduler = lr_module.get_scheduler(num_epochs * num_training_samples // train_batch_size)
+param_scheduler = lr_module.get_scheduler(
+    num_epochs * num_training_samples // train_batch_size
+)
 del lr_module
 
 
@@ -124,7 +133,7 @@ assert EVAL_EPOCH_INTERVAL > 0, "EVAL_EPOCH_INTERVAL must be > 0"
 train_cfg = dict(
     type="IterBasedTrainLoop",
     max_iters=num_epochs * num_training_samples // train_batch_size,
-    val_interval=EVAL_EPOCH_INTERVAL * num_training_samples // train_batch_size
+    val_interval=EVAL_EPOCH_INTERVAL * num_training_samples // train_batch_size,
 )
 val_cfg = dict(type="ValLoop")
 test_cfg = dict(type="TestLoop")
@@ -140,14 +149,24 @@ model = dict(
     decode_head=dict(
         num_classes=2,
         loss_decode=[
-            dict(type=losses_mappings[loss_name][0], loss_name=losses_mappings[loss_name][1], loss_weight=LOSSES[loss_name], debug_every=DEBUG_STEP_INTERVAL, debug_path=DEBUG_PATH)
+            dict(
+                type=losses_mappings[loss_name][0],
+                loss_name=losses_mappings[loss_name][1],
+                loss_weight=LOSSES[loss_name],
+                debug_every=DEBUG_STEP_INTERVAL,
+                debug_path=DEBUG_PATH,
+            )
             for loss_name in LOSSES
         ],
     ),
     auxiliary_head=dict(
         num_classes=2,
         loss_decode=[
-            dict(type=losses_mappings[loss_name][0], loss_name=losses_mappings[loss_name][1], loss_weight=LOSSES[loss_name] * 0.4)
+            dict(
+                type=losses_mappings[loss_name][0],
+                loss_name=losses_mappings[loss_name][1],
+                loss_weight=LOSSES[loss_name] * 0.4,
+            )
             for loss_name in LOSSES
         ],
     ),
@@ -161,20 +180,27 @@ default_hooks = dict(
     sampler_seed=dict(type="DistSamplerSeedHook"),
 )
 if LOG_STEP_INTERVAL > 0:
-    default_hooks["logger"] = dict(type="LoggerHook", interval=LOG_STEP_INTERVAL, log_metric_by_epoch=False)
+    default_hooks["logger"] = dict(
+        type="LoggerHook", interval=LOG_STEP_INTERVAL, log_metric_by_epoch=False
+    )
 else:
     warn("No logging will be performed.")
 
 if SAVE_EPOCH_INTERVAL > 0:
-    default_hooks["checkpoint"] = dict(type="CheckpointHook", by_epoch=False, interval=SAVE_EPOCH_INTERVAL * num_training_samples // train_batch_size)
+    default_hooks["checkpoint"] = dict(
+        type="CheckpointHook",
+        by_epoch=False,
+        interval=SAVE_EPOCH_INTERVAL * num_training_samples // train_batch_size,
+    )
 else:
     warn("No checkpoint will be saved.")
 
 if VISUALIZE_ONE_OUT_OF > 0:
-    default_hooks["visualization"] = dict(type="SegVisualizationHook", draw=True, interval=VISUALIZE_ONE_OUT_OF)
+    default_hooks["visualization"] = dict(
+        type="SegVisualizationHook", draw=True, interval=VISUALIZE_ONE_OUT_OF
+    )
 else:
     warn("No visualization will be performed.")
-
 
 
 # WANDB logging
@@ -185,6 +211,7 @@ if USE_WANDB:
     # Generate a 10 character long random string
     import random
     import string
+
     tag = "".join(random.choices(string.ascii_uppercase + string.digits, k=10))
     vis_backends.append(
         dict(
@@ -192,8 +219,8 @@ if USE_WANDB:
             init_kwargs=dict(
                 project=DATASET + "_segmentation" + WANDB_PROJECT_SUFFIX,
                 entity="single-shot-robot",
-                name=WANDB_RUN_NAME +  "_" + tag,
-                group=WANDB_RUN_NAME
+                name=WANDB_RUN_NAME + "_" + tag,
+                group=WANDB_RUN_NAME,
             ),
         ),
     )

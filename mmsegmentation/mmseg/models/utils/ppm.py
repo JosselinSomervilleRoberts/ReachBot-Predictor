@@ -29,19 +29,20 @@ class DAPPM(BaseModule):
         upsample_mode (str): Upsample mode. Default: 'bilinear'.
     """
 
-    def __init__(self,
-                 in_channels: int,
-                 branch_channels: int,
-                 out_channels: int,
-                 num_scales: int,
-                 kernel_sizes: List[int] = [5, 9, 17],
-                 strides: List[int] = [2, 4, 8],
-                 paddings: List[int] = [2, 4, 8],
-                 norm_cfg: Dict = dict(type='BN', momentum=0.1),
-                 act_cfg: Dict = dict(type='ReLU', inplace=True),
-                 conv_cfg: Dict = dict(
-                     order=('norm', 'act', 'conv'), bias=False),
-                 upsample_mode: str = 'bilinear'):
+    def __init__(
+        self,
+        in_channels: int,
+        branch_channels: int,
+        out_channels: int,
+        num_scales: int,
+        kernel_sizes: List[int] = [5, 9, 17],
+        strides: List[int] = [2, 4, 8],
+        paddings: List[int] = [2, 4, 8],
+        norm_cfg: Dict = dict(type="BN", momentum=0.1),
+        act_cfg: Dict = dict(type="ReLU", inplace=True),
+        conv_cfg: Dict = dict(order=("norm", "act", "conv"), bias=False),
+        upsample_mode: str = "bilinear",
+    ):
         super().__init__()
 
         self.num_scales = num_scales
@@ -53,41 +54,53 @@ class DAPPM(BaseModule):
         self.act_cfg = act_cfg
         self.conv_cfg = conv_cfg
 
-        self.scales = ModuleList([
-            ConvModule(
-                in_channels,
-                branch_channels,
-                kernel_size=1,
-                norm_cfg=norm_cfg,
-                act_cfg=act_cfg,
-                **conv_cfg)
-        ])
-        for i in range(1, num_scales - 1):
-            self.scales.append(
-                Sequential(*[
-                    nn.AvgPool2d(
-                        kernel_size=kernel_sizes[i - 1],
-                        stride=strides[i - 1],
-                        padding=paddings[i - 1]),
-                    ConvModule(
-                        in_channels,
-                        branch_channels,
-                        kernel_size=1,
-                        norm_cfg=norm_cfg,
-                        act_cfg=act_cfg,
-                        **conv_cfg)
-                ]))
-        self.scales.append(
-            Sequential(*[
-                nn.AdaptiveAvgPool2d((1, 1)),
+        self.scales = ModuleList(
+            [
                 ConvModule(
                     in_channels,
                     branch_channels,
                     kernel_size=1,
                     norm_cfg=norm_cfg,
                     act_cfg=act_cfg,
-                    **conv_cfg)
-            ]))
+                    **conv_cfg
+                )
+            ]
+        )
+        for i in range(1, num_scales - 1):
+            self.scales.append(
+                Sequential(
+                    *[
+                        nn.AvgPool2d(
+                            kernel_size=kernel_sizes[i - 1],
+                            stride=strides[i - 1],
+                            padding=paddings[i - 1],
+                        ),
+                        ConvModule(
+                            in_channels,
+                            branch_channels,
+                            kernel_size=1,
+                            norm_cfg=norm_cfg,
+                            act_cfg=act_cfg,
+                            **conv_cfg
+                        ),
+                    ]
+                )
+            )
+        self.scales.append(
+            Sequential(
+                *[
+                    nn.AdaptiveAvgPool2d((1, 1)),
+                    ConvModule(
+                        in_channels,
+                        branch_channels,
+                        kernel_size=1,
+                        norm_cfg=norm_cfg,
+                        act_cfg=act_cfg,
+                        **conv_cfg
+                    ),
+                ]
+            )
+        )
         self.processes = ModuleList()
         for i in range(num_scales - 1):
             self.processes.append(
@@ -98,7 +111,9 @@ class DAPPM(BaseModule):
                     padding=1,
                     norm_cfg=norm_cfg,
                     act_cfg=act_cfg,
-                    **conv_cfg))
+                    **conv_cfg
+                )
+            )
 
         self.compression = ConvModule(
             branch_channels * num_scales,
@@ -106,7 +121,8 @@ class DAPPM(BaseModule):
             kernel_size=1,
             norm_cfg=norm_cfg,
             act_cfg=act_cfg,
-            **conv_cfg)
+            **conv_cfg
+        )
 
         self.shortcut = ConvModule(
             in_channels,
@@ -114,7 +130,8 @@ class DAPPM(BaseModule):
             kernel_size=1,
             norm_cfg=norm_cfg,
             act_cfg=act_cfg,
-            **conv_cfg)
+            **conv_cfg
+        )
 
     def forward(self, inputs: Tensor):
         feats = []
@@ -122,13 +139,11 @@ class DAPPM(BaseModule):
 
         for i in range(1, self.num_scales):
             feat_up = F.interpolate(
-                self.scales[i](inputs),
-                size=inputs.shape[2:],
-                mode=self.unsample_mode)
+                self.scales[i](inputs), size=inputs.shape[2:], mode=self.unsample_mode
+            )
             feats.append(self.processes[i - 1](feat_up + feats[i - 1]))
 
-        return self.compression(torch.cat(feats,
-                                          dim=1)) + self.shortcut(inputs)
+        return self.compression(torch.cat(feats, dim=1)) + self.shortcut(inputs)
 
 
 class PAPPM(DAPPM):
@@ -151,22 +166,33 @@ class PAPPM(DAPPM):
         upsample_mode (str): Upsample mode. Default: 'bilinear'.
     """
 
-    def __init__(self,
-                 in_channels: int,
-                 branch_channels: int,
-                 out_channels: int,
-                 num_scales: int,
-                 kernel_sizes: List[int] = [5, 9, 17],
-                 strides: List[int] = [2, 4, 8],
-                 paddings: List[int] = [2, 4, 8],
-                 norm_cfg: Dict = dict(type='BN', momentum=0.1),
-                 act_cfg: Dict = dict(type='ReLU', inplace=True),
-                 conv_cfg: Dict = dict(
-                     order=('norm', 'act', 'conv'), bias=False),
-                 upsample_mode: str = 'bilinear'):
-        super().__init__(in_channels, branch_channels, out_channels,
-                         num_scales, kernel_sizes, strides, paddings, norm_cfg,
-                         act_cfg, conv_cfg, upsample_mode)
+    def __init__(
+        self,
+        in_channels: int,
+        branch_channels: int,
+        out_channels: int,
+        num_scales: int,
+        kernel_sizes: List[int] = [5, 9, 17],
+        strides: List[int] = [2, 4, 8],
+        paddings: List[int] = [2, 4, 8],
+        norm_cfg: Dict = dict(type="BN", momentum=0.1),
+        act_cfg: Dict = dict(type="ReLU", inplace=True),
+        conv_cfg: Dict = dict(order=("norm", "act", "conv"), bias=False),
+        upsample_mode: str = "bilinear",
+    ):
+        super().__init__(
+            in_channels,
+            branch_channels,
+            out_channels,
+            num_scales,
+            kernel_sizes,
+            strides,
+            paddings,
+            norm_cfg,
+            act_cfg,
+            conv_cfg,
+            upsample_mode,
+        )
 
         self.processes = ConvModule(
             self.branch_channels * (self.num_scales - 1),
@@ -176,7 +202,8 @@ class PAPPM(DAPPM):
             groups=self.num_scales - 1,
             norm_cfg=self.norm_cfg,
             act_cfg=self.act_cfg,
-            **self.conv_cfg)
+            **self.conv_cfg
+        )
 
     def forward(self, inputs: Tensor):
         x_ = self.scales[0](inputs)
@@ -186,8 +213,10 @@ class PAPPM(DAPPM):
                 self.scales[i](inputs),
                 size=inputs.shape[2:],
                 mode=self.unsample_mode,
-                align_corners=False)
+                align_corners=False,
+            )
             feats.append(feat_up + x_)
         scale_out = self.processes(torch.cat(feats, dim=1))
-        return self.compression(torch.cat([x_, scale_out],
-                                          dim=1)) + self.shortcut(inputs)
+        return self.compression(torch.cat([x_, scale_out], dim=1)) + self.shortcut(
+            inputs
+        )

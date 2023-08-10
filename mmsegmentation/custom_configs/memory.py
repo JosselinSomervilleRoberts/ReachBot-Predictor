@@ -1,18 +1,23 @@
 # Figure out CUDA memory available
 import torch
 
+
 def get_device() -> str:
     return "cuda" if torch.cuda.is_available() else "cpu"
+
 
 assert get_device() == "cuda", "CUDA not available"
 
 import nvidia_smi
+
 nvidia_smi.nvmlInit()
+
 
 def get_cuda_free_Go() -> float:
     handle = nvidia_smi.nvmlDeviceGetHandleByIndex(0)
     info = nvidia_smi.nvmlDeviceGetMemoryInfo(handle)
     return info.free / 1024**3
+
 
 memory_available = get_cuda_free_Go()
 print(f"Detected {memory_available:.2f} GB of CUDA memory available")

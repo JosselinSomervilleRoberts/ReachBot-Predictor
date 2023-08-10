@@ -1,6 +1,3 @@
-
-
-
 def get_dataset(crop_size, train_batch_size):
     dataset_type = "ReachbotDataset"
     data_root = "../datasets/cracks_seg/"
@@ -8,9 +5,7 @@ def get_dataset(crop_size, train_batch_size):
     train_pipeline = [
         dict(type="LoadImageFromFile"),
         dict(type="LoadAnnotations"),
-        dict(
-            type="Resize", scale=512, keep_ratio=True
-        ),
+        dict(type="Resize", scale=512, keep_ratio=True),
         dict(type="RandomFlip", prob=0.5),
         dict(type="PhotoMetricDistortion"),
         dict(type="PackSegInputs"),

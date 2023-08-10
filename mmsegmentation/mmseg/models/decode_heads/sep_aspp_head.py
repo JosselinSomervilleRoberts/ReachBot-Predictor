@@ -23,7 +23,8 @@ class DepthwiseSeparableASPPModule(ASPPModule):
                     dilation=dilation,
                     padding=dilation,
                     norm_cfg=self.norm_cfg,
-                    act_cfg=self.act_cfg)
+                    act_cfg=self.act_cfg,
+                )
 
 
 @MODELS.register_module()
@@ -49,7 +50,8 @@ class DepthwiseSeparableASPPHead(ASPPHead):
             channels=self.channels,
             conv_cfg=self.conv_cfg,
             norm_cfg=self.norm_cfg,
-            act_cfg=self.act_cfg)
+            act_cfg=self.act_cfg,
+        )
         if c1_in_channels > 0:
             self.c1_bottleneck = ConvModule(
                 c1_in_channels,
@@ -57,7 +59,8 @@ class DepthwiseSeparableASPPHead(ASPPHead):
                 1,
                 conv_cfg=self.conv_cfg,
                 norm_cfg=self.norm_cfg,
-                act_cfg=self.act_cfg)
+                act_cfg=self.act_cfg,
+            )
         else:
             self.c1_bottleneck = None
         self.sep_bottleneck = nn.Sequential(
@@ -67,14 +70,17 @@ class DepthwiseSeparableASPPHead(ASPPHead):
                 3,
                 padding=1,
                 norm_cfg=self.norm_cfg,
-                act_cfg=self.act_cfg),
+                act_cfg=self.act_cfg,
+            ),
             DepthwiseSeparableConvModule(
                 self.channels,
                 self.channels,
                 3,
                 padding=1,
                 norm_cfg=self.norm_cfg,
-                act_cfg=self.act_cfg))
+                act_cfg=self.act_cfg,
+            ),
+        )
 
     def forward(self, inputs):
         """Forward function."""
@@ -83,8 +89,9 @@ class DepthwiseSeparableASPPHead(ASPPHead):
             resize(
                 self.image_pool(x),
                 size=x.size()[2:],
-                mode='bilinear',
-                align_corners=self.align_corners)
+                mode="bilinear",
+                align_corners=self.align_corners,
+            )
         ]
         aspp_outs.extend(self.aspp_modules(x))
         aspp_outs = torch.cat(aspp_outs, dim=1)
@@ -94,8 +101,9 @@ class DepthwiseSeparableASPPHead(ASPPHead):
             output = resize(
                 input=output,
                 size=c1_output.shape[2:],
-                mode='bilinear',
-                align_corners=self.align_corners)
+                mode="bilinear",
+                align_corners=self.align_corners,
+            )
             output = torch.cat([output, c1_output], dim=1)
         output = self.sep_bottleneck(output)
         output = self.cls_seg(output)

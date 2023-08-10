@@ -6,8 +6,10 @@ import os
 import shutil
 
 # Replace these paths with your actual folder paths
-folder_a_path = '/media/jsomerviller/SSD2/ReachBot-Predictor/datasets/cracks_seg_full/ann_dir/train'
-folder_b_path = '/media/jsomerviller/SSD2/ReachBot-Predictor/datasets/original_data/cracks_real/masks'
+folder_a_path = (
+    "/media/jsomerviller/SSD2/ReachBot-Predictor/datasets/cracks_seg_full/ann_dir/train"
+)
+folder_b_path = "/media/jsomerviller/SSD2/ReachBot-Predictor/datasets/original_data/cracks_real/masks"
 increment = 20
 
 if not os.path.exists(folder_b_path):
@@ -15,9 +17,9 @@ if not os.path.exists(folder_b_path):
 
 # Iterate over files in folder A
 for filename in os.listdir(folder_a_path):
-    if filename.endswith('.png'):
+    if filename.endswith(".png"):
         try:
-            i = int(filename.split('.')[0])
+            i = int(filename.split(".")[0])
             new_filename = f"{i + increment}.png"
             src_file = os.path.join(folder_a_path, filename)
             dst_file = os.path.join(folder_b_path, new_filename)

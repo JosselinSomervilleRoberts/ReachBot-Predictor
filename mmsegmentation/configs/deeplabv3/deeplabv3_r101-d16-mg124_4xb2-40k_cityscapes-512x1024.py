@@ -1,11 +1,10 @@
-_base_ = './deeplabv3_r50-d8_4xb2-40k_cityscapes-512x1024.py'
+_base_ = "./deeplabv3_r50-d8_4xb2-40k_cityscapes-512x1024.py"
 model = dict(
-    pretrained='open-mmlab://resnet101_v1c',
+    pretrained="open-mmlab://resnet101_v1c",
     backbone=dict(
-        depth=101,
-        dilations=(1, 1, 1, 2),
-        strides=(1, 2, 2, 1),
-        multi_grid=(1, 2, 4)),
+        depth=101, dilations=(1, 1, 1, 2), strides=(1, 2, 2, 1), multi_grid=(1, 2, 4)
+    ),
     decode_head=dict(
-        dilations=(1, 6, 12, 18),
-        sampler=dict(type='OHEMPixelSampler', min_kept=100000)))
+        dilations=(1, 6, 12, 18), sampler=dict(type="OHEMPixelSampler", min_kept=100000)
+    ),
+)

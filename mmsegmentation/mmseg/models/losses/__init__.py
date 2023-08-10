@@ -34,5 +34,5 @@ __all__ = [
     "BoundaryLoss",
     "SkilLossDice",
     "SkilLossProduct",
-    "ClDiceLoss"
+    "ClDiceLoss",
 ]

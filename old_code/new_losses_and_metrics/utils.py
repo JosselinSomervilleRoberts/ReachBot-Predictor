@@ -6,8 +6,12 @@ from skimage.measure import label
 
 def separate_mask(mask: np.ndarray):
     assert len(mask.shape) == 2, "The mask must be a 2D array"
-    assert mask.dtype == bool or (mask.dtype == np.uint8 or mask.dtype == np.int64) and np.max(mask) <= 1, "The mask must be a boolean array"
-    
+    assert (
+        mask.dtype == bool
+        or (mask.dtype == np.uint8 or mask.dtype == np.int64)
+        and np.max(mask) <= 1
+    ), "The mask must be a boolean array"
+
     separated_mask = label(mask)
     blobs = []
     for i in np.unique(separated_mask):
@@ -30,8 +34,8 @@ def get_bounding_box(mask) -> Tuple[int, int, int, int]:
 
 
 def crop_to_bounding_box(
-    image: Union[np.ndarray, Image.Image],
-    bounding_box: Tuple[int, int, int, int]) -> Union[np.ndarray, Image.Image]:
+    image: Union[np.ndarray, Image.Image], bounding_box: Tuple[int, int, int, int]
+) -> Union[np.ndarray, Image.Image]:
     """
     Crops an image to a bounding box.
     The bounding box is defined as (x_min, y_min, x_max, y_max).
@@ -39,7 +43,9 @@ def crop_to_bounding_box(
     if isinstance(image, Image.Image):
         return image.crop(bounding_box)
     else:
-        return image[bounding_box[1]:bounding_box[3], bounding_box[0]:bounding_box[2]]
+        return image[
+            bounding_box[1] : bounding_box[3], bounding_box[0] : bounding_box[2]
+        ]
 
 
 def get_shared_bounding_box(mask1, mask2) -> Tuple[int, int, int, int]:

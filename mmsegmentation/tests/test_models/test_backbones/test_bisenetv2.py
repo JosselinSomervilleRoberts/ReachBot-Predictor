@@ -3,8 +3,7 @@ import torch
 from mmcv.cnn import ConvModule
 
 from mmseg.models.backbones import BiSeNetV2
-from mmseg.models.backbones.bisenetv2 import (BGALayer, DetailBranch,
-                                              SemanticBranch)
+from mmseg.models.backbones.bisenetv2 import BGALayer, DetailBranch, SemanticBranch
 
 
 def test_bisenetv2_backbone():

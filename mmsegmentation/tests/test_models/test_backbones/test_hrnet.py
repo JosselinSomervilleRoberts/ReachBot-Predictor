@@ -7,7 +7,7 @@ from mmseg.models.backbones.hrnet import HRModule, HRNet
 from mmseg.models.backbones.resnet import BasicBlock, Bottleneck
 
 
-@pytest.mark.parametrize('block', [BasicBlock, Bottleneck])
+@pytest.mark.parametrize("block", [BasicBlock, Bottleneck])
 def test_hrmodule(block):
     # Test multiscale forward
     num_channles = (32, 64)
@@ -22,7 +22,7 @@ def test_hrmodule(block):
 
     feats = [
         torch.randn(1, in_channels[0], 64, 64),
-        torch.randn(1, in_channels[1], 32, 32)
+        torch.randn(1, in_channels[1], 32, 32),
     ]
     feats = hrmodule(feats)
 
@@ -44,7 +44,7 @@ def test_hrmodule(block):
 
     feats = [
         torch.randn(1, in_channels[0], 64, 64),
-        torch.randn(1, in_channels[1], 32, 32)
+        torch.randn(1, in_channels[1], 32, 32),
     ]
     feats = hrmodule(feats)
 
@@ -58,37 +58,42 @@ def test_hrnet_backbone():
         stage1=dict(
             num_modules=1,
             num_branches=1,
-            block='BOTTLENECK',
-            num_blocks=(4, ),
-            num_channels=(64, )),
+            block="BOTTLENECK",
+            num_blocks=(4,),
+            num_channels=(64,),
+        ),
         stage2=dict(
             num_modules=1,
             num_branches=2,
-            block='BASIC',
+            block="BASIC",
             num_blocks=(4, 4),
-            num_channels=(32, 64)),
+            num_channels=(32, 64),
+        ),
         stage3=dict(
             num_modules=4,
             num_branches=3,
-            block='BASIC',
+            block="BASIC",
             num_blocks=(4, 4, 4),
-            num_channels=(32, 64, 128)))
+            num_channels=(32, 64, 128),
+        ),
+    )
 
     with pytest.raises(AssertionError):
         # HRNet now only support 4 stages
         HRNet(extra=extra)
-    extra['stage4'] = dict(
+    extra["stage4"] = dict(
         num_modules=3,
         num_branches=3,  # should be 4
-        block='BASIC',
+        block="BASIC",
         num_blocks=(4, 4, 4, 4),
-        num_channels=(32, 64, 128, 256))
+        num_channels=(32, 64, 128, 256),
+    )
 
     with pytest.raises(AssertionError):
         # len(num_blocks) should equal num_branches
         HRNet(extra=extra)
 
-    extra['stage4']['num_branches'] = 4
+    extra["stage4"]["num_branches"] = 4
 
     # Test hrnetv2p_w32
     model = HRNet(extra=extra)
@@ -123,13 +128,13 @@ def test_hrnet_backbone():
             assert param.requires_grad is False
     for i in range(1, frozen_stages + 1):
         if i == 1:
-            layer = getattr(model, f'layer{i}')
-            transition = getattr(model, f'transition{i}')
+            layer = getattr(model, f"layer{i}")
+            transition = getattr(model, f"transition{i}")
         elif i == 4:
-            layer = getattr(model, f'stage{i}')
+            layer = getattr(model, f"stage{i}")
         else:
-            layer = getattr(model, f'stage{i}')
-            transition = getattr(model, f'transition{i}')
+            layer = getattr(model, f"stage{i}")
+            transition = getattr(model, f"transition{i}")
 
         for mod in layer.modules():
             if isinstance(mod, _BatchNorm):

@@ -8,6 +8,7 @@ from data_utils.datasets import FullImageDataset
 from data_utils.utils import set_description
 
 import nvidia_smi
+
 nvidia_smi.nvmlInit()
 
 class_name: str = "boulders"
@@ -24,8 +25,8 @@ with tqdm(enumerate(data_loader), total=len(data_loader)) as pbar:
         image, mask = data
         list_of_crops = full_image_dataset.crop(image, mask)
         for crop in list_of_crops:
-            image = crop["image"] # cv2 image
-            mask = crop["mask"] # torch tensor
+            image = crop["image"]  # cv2 image
+            mask = crop["mask"]  # torch tensor
 
             # Save both as png images
             directory_path = f"./datasets/{class_name}/cropped/{mode}"

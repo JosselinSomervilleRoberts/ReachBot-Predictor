@@ -33,21 +33,23 @@ class MaskFormerHead(MMDET_MaskFormerHead):
         ignore_index (int): The label index to be ignored. Default: 255.
     """
 
-    def __init__(self,
-                 num_classes: int = 150,
-                 align_corners: bool = False,
-                 ignore_index: int = 255,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        num_classes: int = 150,
+        align_corners: bool = False,
+        ignore_index: int = 255,
+        **kwargs
+    ) -> None:
         super().__init__(**kwargs)
 
-        self.out_channels = kwargs['out_channels']
+        self.out_channels = kwargs["out_channels"]
         self.align_corners = True
         self.num_classes = num_classes
         self.align_corners = align_corners
         self.out_channels = num_classes
         self.ignore_index = ignore_index
 
-        feat_channels = kwargs['feat_channels']
+        feat_channels = kwargs["feat_channels"]
         self.cls_embed = nn.Linear(feat_channels, self.num_classes + 1)
 
     def _seg_data_to_instance_data(self, batch_data_samples: SampleList):
@@ -76,15 +78,13 @@ class MaskFormerHead(MMDET_MaskFormerHead):
             # Add `batch_input_shape` in metainfo of data_sample, which would
             # be used in MaskFormerHead of MMDetection.
             metainfo = data_sample.metainfo
-            metainfo['batch_input_shape'] = metainfo['img_shape']
+            metainfo["batch_input_shape"] = metainfo["img_shape"]
             data_sample.set_metainfo(metainfo)
             batch_img_metas.append(data_sample.metainfo)
             gt_sem_seg = data_sample.gt_sem_seg.data
             classes = torch.unique(
-                gt_sem_seg,
-                sorted=False,
-                return_inverse=False,
-                return_counts=False)
+                gt_sem_seg, sorted=False, return_inverse=False, return_counts=False
+            )
 
             # remove ignored region
             gt_labels = classes[classes != self.ignore_index]
@@ -94,18 +94,19 @@ class MaskFormerHead(MMDET_MaskFormerHead):
                 masks.append(gt_sem_seg == class_id)
 
             if len(masks) == 0:
-                gt_masks = torch.zeros((0, gt_sem_seg.shape[-2],
-                                        gt_sem_seg.shape[-1])).to(gt_sem_seg)
+                gt_masks = torch.zeros(
+                    (0, gt_sem_seg.shape[-2], gt_sem_seg.shape[-1])
+                ).to(gt_sem_seg)
             else:
                 gt_masks = torch.stack(masks).squeeze(1)
 
-            instance_data = InstanceData(
-                labels=gt_labels, masks=gt_masks.long())
+            instance_data = InstanceData(labels=gt_labels, masks=gt_masks.long())
             batch_gt_instances.append(instance_data)
         return batch_gt_instances, batch_img_metas
 
-    def loss(self, x: Tuple[Tensor], batch_data_samples: SampleList,
-             train_cfg: ConfigType) -> dict:
+    def loss(
+        self, x: Tuple[Tensor], batch_data_samples: SampleList, train_cfg: ConfigType
+    ) -> dict:
         """Perform forward propagation and loss calculation of the decoder head
         on the features of the upstream network.
 
@@ -122,19 +123,22 @@ class MaskFormerHead(MMDET_MaskFormerHead):
         """
         # batch SegDataSample to InstanceDataSample
         batch_gt_instances, batch_img_metas = self._seg_data_to_instance_data(
-            batch_data_samples)
+            batch_data_samples
+        )
 
         # forward
         all_cls_scores, all_mask_preds = self(x, batch_data_samples)
 
         # loss
-        losses = self.loss_by_feat(all_cls_scores, all_mask_preds,
-                                   batch_gt_instances, batch_img_metas)
+        losses = self.loss_by_feat(
+            all_cls_scores, all_mask_preds, batch_gt_instances, batch_img_metas
+        )
 
         return losses
 
-    def predict(self, x: Tuple[Tensor], batch_img_metas: List[dict],
-                test_cfg: ConfigType) -> Tuple[Tensor]:
+    def predict(
+        self, x: Tuple[Tensor], batch_img_metas: List[dict], test_cfg: ConfigType
+    ) -> Tuple[Tensor]:
         """Test without augmentaton.
 
         Args:
@@ -151,7 +155,7 @@ class MaskFormerHead(MMDET_MaskFormerHead):
 
         batch_data_samples = []
         for metainfo in batch_img_metas:
-            metainfo['batch_input_shape'] = metainfo['img_shape']
+            metainfo["batch_input_shape"] = metainfo["img_shape"]
             batch_data_samples.append(SegDataSample(metainfo=metainfo))
         # Forward function of MaskFormerHead from MMDetection needs
         # 'batch_data_samples' as inputs, which is image shape　actually.
@@ -160,15 +164,13 @@ class MaskFormerHead(MMDET_MaskFormerHead):
         mask_pred_results = all_mask_preds[-1]
 
         # upsample masks
-        img_shape = batch_img_metas[0]['batch_input_shape']
+        img_shape = batch_img_metas[0]["batch_input_shape"]
         mask_pred_results = F.interpolate(
-            mask_pred_results,
-            size=img_shape,
-            mode='bilinear',
-            align_corners=False)
+            mask_pred_results, size=img_shape, mode="bilinear", align_corners=False
+        )
 
         # semantic inference
         cls_score = F.softmax(mask_cls_results, dim=-1)[..., :-1]
         mask_pred = mask_pred_results.sigmoid()
-        seg_logits = torch.einsum('bqc,bqhw->bchw', cls_score, mask_pred)
+        seg_logits = torch.einsum("bqc,bqhw->bchw", cls_score, mask_pred)
         return seg_logits

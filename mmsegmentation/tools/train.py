@@ -12,7 +12,6 @@ from mmseg.registry import RUNNERS
 from toolbox import aws
 
 
-
 def parse_args():
     parser = argparse.ArgumentParser(description="Train a segmentor")
     parser.add_argument("config", help="train config file path")

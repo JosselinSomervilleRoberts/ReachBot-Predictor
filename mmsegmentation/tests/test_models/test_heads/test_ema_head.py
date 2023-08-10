@@ -12,10 +12,11 @@ def test_emanet_head():
         channels=2,
         num_stages=3,
         num_bases=2,
-        num_classes=19)
+        num_classes=19,
+    )
     for param in head.ema_mid_conv.parameters():
         assert not param.requires_grad
-    assert hasattr(head, 'ema_module')
+    assert hasattr(head, "ema_module")
     inputs = [torch.randn(1, 4, 23, 23)]
     if torch.cuda.is_available():
         head, inputs = to_cuda(head, inputs)

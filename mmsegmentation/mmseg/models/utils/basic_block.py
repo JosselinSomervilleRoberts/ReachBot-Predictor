@@ -30,15 +30,17 @@ class BasicBlock(BaseModule):
 
     expansion = 1
 
-    def __init__(self,
-                 in_channels: int,
-                 channels: int,
-                 stride: int = 1,
-                 downsample: nn.Module = None,
-                 norm_cfg: OptConfigType = dict(type='BN'),
-                 act_cfg: OptConfigType = dict(type='ReLU', inplace=True),
-                 act_cfg_out: OptConfigType = dict(type='ReLU', inplace=True),
-                 init_cfg: OptConfigType = None):
+    def __init__(
+        self,
+        in_channels: int,
+        channels: int,
+        stride: int = 1,
+        downsample: nn.Module = None,
+        norm_cfg: OptConfigType = dict(type="BN"),
+        act_cfg: OptConfigType = dict(type="ReLU", inplace=True),
+        act_cfg_out: OptConfigType = dict(type="ReLU", inplace=True),
+        init_cfg: OptConfigType = None,
+    ):
         super().__init__(init_cfg)
         self.conv1 = ConvModule(
             in_channels,
@@ -47,14 +49,16 @@ class BasicBlock(BaseModule):
             stride=stride,
             padding=1,
             norm_cfg=norm_cfg,
-            act_cfg=act_cfg)
+            act_cfg=act_cfg,
+        )
         self.conv2 = ConvModule(
             channels,
             channels,
             kernel_size=3,
             padding=1,
             norm_cfg=norm_cfg,
-            act_cfg=None)
+            act_cfg=None,
+        )
         self.downsample = downsample
         if act_cfg_out:
             self.act = MODELS.build(act_cfg_out)
@@ -69,7 +73,7 @@ class BasicBlock(BaseModule):
 
         out += residual
 
-        if hasattr(self, 'act'):
+        if hasattr(self, "act"):
             out = self.act(out)
 
         return out
@@ -95,32 +99,27 @@ class Bottleneck(BaseModule):
 
     expansion = 2
 
-    def __init__(self,
-                 in_channels: int,
-                 channels: int,
-                 stride: int = 1,
-                 downsample: Optional[nn.Module] = None,
-                 norm_cfg: OptConfigType = dict(type='BN'),
-                 act_cfg: OptConfigType = dict(type='ReLU', inplace=True),
-                 act_cfg_out: OptConfigType = None,
-                 init_cfg: OptConfigType = None):
+    def __init__(
+        self,
+        in_channels: int,
+        channels: int,
+        stride: int = 1,
+        downsample: Optional[nn.Module] = None,
+        norm_cfg: OptConfigType = dict(type="BN"),
+        act_cfg: OptConfigType = dict(type="ReLU", inplace=True),
+        act_cfg_out: OptConfigType = None,
+        init_cfg: OptConfigType = None,
+    ):
         super().__init__(init_cfg)
         self.conv1 = ConvModule(
-            in_channels, channels, 1, norm_cfg=norm_cfg, act_cfg=act_cfg)
+            in_channels, channels, 1, norm_cfg=norm_cfg, act_cfg=act_cfg
+        )
         self.conv2 = ConvModule(
-            channels,
-            channels,
-            3,
-            stride,
-            1,
-            norm_cfg=norm_cfg,
-            act_cfg=act_cfg)
+            channels, channels, 3, stride, 1, norm_cfg=norm_cfg, act_cfg=act_cfg
+        )
         self.conv3 = ConvModule(
-            channels,
-            channels * self.expansion,
-            1,
-            norm_cfg=norm_cfg,
-            act_cfg=None)
+            channels, channels * self.expansion, 1, norm_cfg=norm_cfg, act_cfg=None
+        )
         if act_cfg_out:
             self.act = MODELS.build(act_cfg_out)
         self.downsample = downsample
@@ -137,7 +136,7 @@ class Bottleneck(BaseModule):
 
         out += residual
 
-        if hasattr(self, 'act'):
+        if hasattr(self, "act"):
             out = self.act(out)
 
         return out

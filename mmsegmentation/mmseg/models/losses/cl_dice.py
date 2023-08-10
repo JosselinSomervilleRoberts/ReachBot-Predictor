@@ -13,7 +13,11 @@ from typing import Optional
 
 
 def cl_dice(
-    ground_truth: torch.Tensor, prediction: torch.Tensor, skel_pred: torch.Tensor, skel_true: torch.Tensor, epsilon: float = 1
+    ground_truth: torch.Tensor,
+    prediction: torch.Tensor,
+    skel_pred: torch.Tensor,
+    skel_true: torch.Tensor,
+    epsilon: float = 1,
 ) -> torch.Tensor:
     """Soft dice.
 
@@ -26,9 +30,13 @@ def cl_dice(
         Soft dice.
     """
     assert len(ground_truth.shape) == 3, "Ground truth must be of shape (N, H, W)"
-    tprec = (torch.sum(skel_pred * ground_truth, dim=(-2, -1)) + epsilon) / (torch.sum(skel_pred, dim=(-2, -1)) + epsilon)    
-    tsens = (torch.sum(skel_true * prediction, dim=(-2, -1)) + epsilon) / (torch.sum(skel_true, dim=(-2, -1)) + epsilon)    
-    cl_dice = 2.0*(tprec*tsens)/(tprec+tsens)
+    tprec = (torch.sum(skel_pred * ground_truth, dim=(-2, -1)) + epsilon) / (
+        torch.sum(skel_pred, dim=(-2, -1)) + epsilon
+    )
+    tsens = (torch.sum(skel_true * prediction, dim=(-2, -1)) + epsilon) / (
+        torch.sum(skel_true, dim=(-2, -1)) + epsilon
+    )
+    cl_dice = 2.0 * (tprec * tsens) / (tprec + tsens)
     return cl_dice
 
 
@@ -46,10 +54,10 @@ def cl_dice_loss(
 
     Uses the smooth skeletonization function to compute the skeleton of the
     ground truth and predicted masks.
-    
+
     If use_dice is true, then computes the dice loss between the two enlarged
     skeletons.
-    
+
     Id not, then computes the product between the predicted skeleton and the
     ground truth skeleton enlarged and vice versa.
 
@@ -77,7 +85,9 @@ def cl_dice_loss(
 
     # The random resize puts the value 255 to pad, which we remove and replace
     # by zero, the value of the background.
-    ground_truth = torch.where(ground_truth>1, torch.zeros_like(ground_truth), ground_truth)
+    ground_truth = torch.where(
+        ground_truth > 1, torch.zeros_like(ground_truth), ground_truth
+    )
     assert torch.max(ground_truth) <= 1, "The ground truth must be binary!"
     assert torch.min(ground_truth) >= 0, "The ground truth must be binary!"
 
@@ -96,8 +106,13 @@ def cl_dice_loss(
         prediction_skeleton = soft_skeletonize(prediction, iterations)
 
     # Compute the loss
-    loss: torch.Tensor = 1 - cl_dice(ground_truth, prediction, prediction_skeleton, ground_truth_skeleton, epsilon=epsilon)
-
+    loss: torch.Tensor = 1 - cl_dice(
+        ground_truth,
+        prediction,
+        prediction_skeleton,
+        ground_truth_skeleton,
+        epsilon=epsilon,
+    )
 
     # Debug if needed
     if debug:
@@ -108,9 +123,12 @@ def cl_dice_loss(
             Plotter.start(n_rows, n_cols, debug_path)
             Plotter.plot_mask(ground_truth[batch_idx], "Ground truth")
             Plotter.plot_mask(ground_truth_skeleton[batch_idx], "Ground truth skeleton")
-            Plotter.plot_mask(prediction[batch_idx], f"Prediction - ClLoss: {loss[batch_idx].item():.4f}")
+            Plotter.plot_mask(
+                prediction[batch_idx],
+                f"Prediction - ClLoss: {loss[batch_idx].item():.4f}",
+            )
             Plotter.plot_mask(prediction_skeleton[batch_idx], "Prediction skeleton")
-            Plotter.finish(name = "cl_dice_loss")
+            Plotter.finish(name="cl_dice_loss")
 
     return loss
 
@@ -140,7 +158,9 @@ class ClDiceLoss(nn.Module):
         super().__init__()
 
         if debug_every > 0:
-            assert debug_path is not None, "debug_path must be provided if debug_every > 0"
+            assert (
+                debug_path is not None
+            ), "debug_path must be provided if debug_every > 0"
         self._debug_every = debug_every
         self._debug_path = debug_path
         self._debug_idx = 0
@@ -174,8 +194,8 @@ class ClDiceLoss(nn.Module):
             epsilon=self._epsilon,
             thinner=self._thinner,
             debug=self._debug_every > 0 and self._debug_idx % self._debug_every == 0,
-            debug_path=self._debug_path
-            )
+            debug_path=self._debug_path,
+        )
         self._debug_idx += 1
 
         return loss

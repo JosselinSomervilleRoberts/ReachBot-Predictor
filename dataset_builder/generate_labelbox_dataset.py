@@ -64,8 +64,14 @@ def generate_labelbox_dataset(max_try: int = 10, keep_only_done: bool = True) ->
 
     num_labels = len(labels)
     if keep_only_done:
-        labels = [label for label in labels if label["DataRow Workflow Info"]["taskName"] == "Done"]
-        print(f"Got originally {num_labels} labels, keeping only {len(labels)} which are done")
+        labels = [
+            label
+            for label in labels
+            if label["DataRow Workflow Info"]["taskName"] == "Done"
+        ]
+        print(
+            f"Got originally {num_labels} labels, keeping only {len(labels)} which are done"
+        )
     print(f"Done, got {len(labels)} labels")
 
     # Create folder name "dataset" if it doesn't exist

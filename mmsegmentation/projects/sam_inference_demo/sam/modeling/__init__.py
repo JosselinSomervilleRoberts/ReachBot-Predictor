@@ -9,4 +9,4 @@ from .prompt_encoder import PromptEncoder
 from .sam import SAM
 from .transformer import TwoWayTransformer
 
-__all__ = ['SAM', 'MaskDecoder', 'PromptEncoder', 'TwoWayTransformer']
+__all__ = ["SAM", "MaskDecoder", "PromptEncoder", "TwoWayTransformer"]

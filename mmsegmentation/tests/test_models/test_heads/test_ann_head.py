@@ -13,7 +13,8 @@ def test_ann_head():
         channels=2,
         num_classes=19,
         in_index=[-2, -1],
-        project_channels=8)
+        project_channels=8,
+    )
     if torch.cuda.is_available():
         head, inputs = to_cuda(head, inputs)
     outputs = head(inputs)

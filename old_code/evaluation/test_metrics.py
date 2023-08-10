@@ -17,7 +17,7 @@ from compute_metrics import compute_all_metrics, to_np, log_metrics
 # Load the image and the ground truth segmentation
 # config
 config = configparser.ConfigParser()
-config.read('config.ini') # TODO: Fix config path and variables
+config.read("config.ini")  # TODO: Fix config path and variables
 FINETUNE_DATASET_FOLDER = config["PATHS"]["FINETUNE_DATASET"]
 path_image = os.path.join(FINETUNE_DATASET_FOLDER, "crack", "images", "0.png")
 path_mask = os.path.join(FINETUNE_DATASET_FOLDER, "crack", "masks", "0.png")
@@ -34,7 +34,7 @@ with open(path_bbox, "r") as f:
 # Crop the image and the mask to the bounding box
 image = image.crop(bbox)
 mask = mask.crop(bbox)
-mask = 1. - to_np(mask)
+mask = 1.0 - to_np(mask)
 
 # Generate a fake prediction
 print("Generating fake prediction...")
@@ -42,7 +42,11 @@ prediction = mask.copy()
 prediction = np.roll(prediction, 10, axis=0)
 prediction = np.roll(prediction, 10, axis=1)
 # Add noise
-prediction = prediction + np.abs(np.random.normal(0, 2.0, prediction.shape)) / (1+scipy.ndimage.distance_transform_edt(prediction <= 0.5))**2
+prediction = (
+    prediction
+    + np.abs(np.random.normal(0, 2.0, prediction.shape))
+    / (1 + scipy.ndimage.distance_transform_edt(prediction <= 0.5)) ** 2
+)
 prediction = prediction >= 0.5
 print("Done\n")
 
@@ -95,26 +99,26 @@ union = np.logical_or(mask, prediction)
 # Show the image, the ground truth segmentation and the prediction in one image
 # Below show the image with ground truth mask, predict mask, ground trith + predict mask
 fig, ax = plt.subplots(3, 3, figsize=(15, 5))
-ax[0,0].imshow(image)
-ax[0,0].set_title("Image")
-ax[0,1].imshow(mask)
-ax[0,1].set_title("Ground truth segmentation")
-ax[0,2].imshow(prediction)
-ax[0,2].set_title("Prediction")
-ax[1,0].imshow(image)
+ax[0, 0].imshow(image)
+ax[0, 0].set_title("Image")
+ax[0, 1].imshow(mask)
+ax[0, 1].set_title("Ground truth segmentation")
+ax[0, 2].imshow(prediction)
+ax[0, 2].set_title("Prediction")
+ax[1, 0].imshow(image)
 # Show the mask in red. Since this is one channel, expand to 3 channels and set the red channel to the mask
-ax[1,0].imshow(mask, alpha=0.5)
-ax[1,0].set_title("Ground truth segmentation")
-ax[1,1].imshow(image)
-ax[1,1].imshow(prediction, alpha=0.5)
-ax[1,1].set_title("Prediction")
-ax[1,2].imshow(image)
-ax[1,2].imshow(mask, alpha=0.5)
-ax[1,2].imshow(prediction, alpha=0.5)
-ax[1,2].set_title("Ground truth segmentation and prediction")
-ax[2,0].imshow(intersection)
-ax[2,0].set_title("Intersection")
-ax[2,1].imshow(union)
-ax[2,1].set_title("Union")
+ax[1, 0].imshow(mask, alpha=0.5)
+ax[1, 0].set_title("Ground truth segmentation")
+ax[1, 1].imshow(image)
+ax[1, 1].imshow(prediction, alpha=0.5)
+ax[1, 1].set_title("Prediction")
+ax[1, 2].imshow(image)
+ax[1, 2].imshow(mask, alpha=0.5)
+ax[1, 2].imshow(prediction, alpha=0.5)
+ax[1, 2].set_title("Ground truth segmentation and prediction")
+ax[2, 0].imshow(intersection)
+ax[2, 0].set_title("Intersection")
+ax[2, 1].imshow(union)
+ax[2, 1].set_title("Union")
 
 plt.show()

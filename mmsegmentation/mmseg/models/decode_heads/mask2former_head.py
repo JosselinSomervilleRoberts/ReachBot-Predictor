@@ -7,8 +7,7 @@ import torch.nn.functional as F
 from mmengine.model import BaseModule
 
 try:
-    from mmdet.models.dense_heads import \
-        Mask2FormerHead as MMDET_Mask2FormerHead
+    from mmdet.models.dense_heads import Mask2FormerHead as MMDET_Mask2FormerHead
 except ModuleNotFoundError:
     MMDET_Mask2FormerHead = BaseModule
 
@@ -34,11 +33,7 @@ class Mask2FormerHead(MMDET_Mask2FormerHead):
         ignore_index (int): The label index to be ignored. Default: 255.
     """
 
-    def __init__(self,
-                 num_classes,
-                 align_corners=False,
-                 ignore_index=255,
-                 **kwargs):
+    def __init__(self, num_classes, align_corners=False, ignore_index=255, **kwargs):
         super().__init__(**kwargs)
 
         self.num_classes = num_classes
@@ -46,7 +41,7 @@ class Mask2FormerHead(MMDET_Mask2FormerHead):
         self.out_channels = num_classes
         self.ignore_index = ignore_index
 
-        feat_channels = kwargs['feat_channels']
+        feat_channels = kwargs["feat_channels"]
         self.cls_embed = nn.Linear(feat_channels, self.num_classes + 1)
 
     def _seg_data_to_instance_data(self, batch_data_samples: SampleList):
@@ -76,10 +71,8 @@ class Mask2FormerHead(MMDET_Mask2FormerHead):
             batch_img_metas.append(data_sample.metainfo)
             gt_sem_seg = data_sample.gt_sem_seg.data
             classes = torch.unique(
-                gt_sem_seg,
-                sorted=False,
-                return_inverse=False,
-                return_counts=False)
+                gt_sem_seg, sorted=False, return_inverse=False, return_counts=False
+            )
 
             # remove ignored region
             gt_labels = classes[classes != self.ignore_index]
@@ -89,9 +82,11 @@ class Mask2FormerHead(MMDET_Mask2FormerHead):
                 masks.append(gt_sem_seg == class_id)
 
             if len(masks) == 0:
-                gt_masks = torch.zeros(
-                    (0, gt_sem_seg.shape[-2],
-                     gt_sem_seg.shape[-1])).to(gt_sem_seg).long()
+                gt_masks = (
+                    torch.zeros((0, gt_sem_seg.shape[-2], gt_sem_seg.shape[-1]))
+                    .to(gt_sem_seg)
+                    .long()
+                )
             else:
                 gt_masks = torch.stack(masks).squeeze(1).long()
 
@@ -99,8 +94,9 @@ class Mask2FormerHead(MMDET_Mask2FormerHead):
             batch_gt_instances.append(instance_data)
         return batch_gt_instances, batch_img_metas
 
-    def loss(self, x: Tuple[Tensor], batch_data_samples: SampleList,
-             train_cfg: ConfigType) -> dict:
+    def loss(
+        self, x: Tuple[Tensor], batch_data_samples: SampleList, train_cfg: ConfigType
+    ) -> dict:
         """Perform forward propagation and loss calculation of the decoder head
         on the features of the upstream network.
 
@@ -117,19 +113,22 @@ class Mask2FormerHead(MMDET_Mask2FormerHead):
         """
         # batch SegDataSample to InstanceDataSample
         batch_gt_instances, batch_img_metas = self._seg_data_to_instance_data(
-            batch_data_samples)
+            batch_data_samples
+        )
 
         # forward
         all_cls_scores, all_mask_preds = self(x, batch_data_samples)
 
         # loss
-        losses = self.loss_by_feat(all_cls_scores, all_mask_preds,
-                                   batch_gt_instances, batch_img_metas)
+        losses = self.loss_by_feat(
+            all_cls_scores, all_mask_preds, batch_gt_instances, batch_img_metas
+        )
 
         return losses
 
-    def predict(self, x: Tuple[Tensor], batch_img_metas: List[dict],
-                test_cfg: ConfigType) -> Tuple[Tensor]:
+    def predict(
+        self, x: Tuple[Tensor], batch_img_metas: List[dict], test_cfg: ConfigType
+    ) -> Tuple[Tensor]:
         """Test without augmentaton.
 
         Args:
@@ -150,14 +149,15 @@ class Mask2FormerHead(MMDET_Mask2FormerHead):
         all_cls_scores, all_mask_preds = self(x, batch_data_samples)
         mask_cls_results = all_cls_scores[-1]
         mask_pred_results = all_mask_preds[-1]
-        if 'pad_shape' in batch_img_metas[0]:
-            size = batch_img_metas[0]['pad_shape']
+        if "pad_shape" in batch_img_metas[0]:
+            size = batch_img_metas[0]["pad_shape"]
         else:
-            size = batch_img_metas[0]['img_shape']
+            size = batch_img_metas[0]["img_shape"]
         # upsample mask
         mask_pred_results = F.interpolate(
-            mask_pred_results, size=size, mode='bilinear', align_corners=False)
+            mask_pred_results, size=size, mode="bilinear", align_corners=False
+        )
         cls_score = F.softmax(mask_cls_results, dim=-1)[..., :-1]
         mask_pred = mask_pred_results.sigmoid()
-        seg_logits = torch.einsum('bqc, bqhw->bchw', cls_score, mask_pred)
+        seg_logits = torch.einsum("bqc, bqhw->bchw", cls_score, mask_pred)
         return seg_logits

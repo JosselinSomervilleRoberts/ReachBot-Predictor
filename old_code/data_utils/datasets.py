@@ -12,7 +12,17 @@ from data_utils.load_data import load_images, load_gt_masks, load_palette_gt_mas
 
 
 class FullImageDataset(Dataset):
-    def __init__(self, class_name: str, train: bool, n: int = -1, device: Optional[None] = None, collapse: bool = False, transform=None, mask_transform=None, transforms=None):
+    def __init__(
+        self,
+        class_name: str,
+        train: bool,
+        n: int = -1,
+        device: Optional[None] = None,
+        collapse: bool = False,
+        transform=None,
+        mask_transform=None,
+        transforms=None,
+    ):
         self.transform = transform
         self.mask_transform = mask_transform
         self.transforms = transforms
@@ -24,8 +34,21 @@ class FullImageDataset(Dataset):
         self._collapse = collapse
 
         # Load all image files, sorting them to ensure that they are aligned
-        self.imgs = load_images(class_name=self._class_name, train=self._train, full_images=True, n=self._n, device=self._device)
-        self.masks_data = load_palette_gt_masks(class_name=self._class_name, train=self._train, full_images=True, n=self._n, device=self._device, collapse=collapse)
+        self.imgs = load_images(
+            class_name=self._class_name,
+            train=self._train,
+            full_images=True,
+            n=self._n,
+            device=self._device,
+        )
+        self.masks_data = load_palette_gt_masks(
+            class_name=self._class_name,
+            train=self._train,
+            full_images=True,
+            n=self._n,
+            device=self._device,
+            collapse=collapse,
+        )
 
     def __getitem__(self, idx):
         image = self.imgs[idx]
@@ -64,7 +87,7 @@ class FullImageDataset(Dataset):
 
     def __len__(self):
         return len(self.imgs)
-    
+
     def crop(self, image, target) -> list:
         boxes = target["boxes"]
         masks = target["masks"]
@@ -88,30 +111,34 @@ class FullImageDataset(Dataset):
                 if nb_pixels < 32:
                     continue
                 # Get the bounding box
-                bbox = np.array((Image.fromarray(blob.astype(np.uint8) * 255)).getbbox())
+                bbox = np.array(
+                    (Image.fromarray(blob.astype(np.uint8) * 255)).getbbox()
+                )
 
                 x1, y1, x2, y2 = bbox
                 # Add some randomness to the coordinates
-                x1 = max(0, x1 -random.randint(0, 20), 0)
+                x1 = max(0, x1 - random.randint(0, 20), 0)
                 y1 = max(0, y1 - random.randint(0, 20), 0)
                 x2 = min(image.shape[2], x2 + random.randint(0, 20))
                 y2 = min(image.shape[1], y2 + random.randint(0, 20))
-                cropped_image = image[0,y1:y2, x1:x2]
+                cropped_image = image[0, y1:y2, x1:x2]
                 cropped_mask = blob[y1:y2, x1:x2]
 
-                result.append({
-                    "image": cropped_image,
-                    "mask": cropped_mask
-                })
+                result.append({"image": cropped_image, "mask": cropped_mask})
 
         return result
 
 
-
-
 class CroppedImageDataset(Dataset):
-
-    def __init__(self, class_name: str, train: bool, n: int = -1, device: Optional[None] = None, transform=None, mask_transform=None):
+    def __init__(
+        self,
+        class_name: str,
+        train: bool,
+        n: int = -1,
+        device: Optional[None] = None,
+        transform=None,
+        mask_transform=None,
+    ):
         self.transform = transform
         self.mask_transform = mask_transform
 
@@ -120,8 +147,20 @@ class CroppedImageDataset(Dataset):
         self._n = n
         self._device = device if device is not None else get_device()
 
-        self.imgs = load_images(class_name=self._class_name, full_images=False, train=self._train, n=self._n, device=self._device)
-        self.gt_masks = load_gt_masks(class_name=self._class_name, full_images=False, train=self._train, n=self._n, device=self._device)
+        self.imgs = load_images(
+            class_name=self._class_name,
+            full_images=False,
+            train=self._train,
+            n=self._n,
+            device=self._device,
+        )
+        self.gt_masks = load_gt_masks(
+            class_name=self._class_name,
+            full_images=False,
+            train=self._train,
+            n=self._n,
+            device=self._device,
+        )
 
     def __len__(self):
         return len(self.imgs)

@@ -28,7 +28,6 @@ class Plotter:
             plt.title(title)
         Plotter.subplot_index += 1
 
-
     @staticmethod
     def plot_image(image: Union[torch.Tensor, np.ndarray], title: Optional[str] = None):
         """Plot an image."""
@@ -39,17 +38,22 @@ class Plotter:
         while len(image.shape) > 3 and image.shape[0] == 1:
             image = image[0]
         if len(image.shape) > 3 or len(image.shape) <= 2:
-            raise Exception("The image must have  3 dimensions! The current dimensions are: " + str(image.shape))
+            raise Exception(
+                "The image must have  3 dimensions! The current dimensions are: "
+                + str(image.shape)
+            )
         if image.shape[0] == 3:
             image = np.transpose(image, (1, 2, 0))
         if not image.shape[2] == 3:
-            raise Exception("The image must have 3 channels! The current dimensions are: " + str(image.shape))
+            raise Exception(
+                "The image must have 3 channels! The current dimensions are: "
+                + str(image.shape)
+            )
         plt.subplot(Plotter.n_rows, Plotter.n_cols, Plotter.subplot_index + 1)
         plt.imshow(image)
         if title is not None:
             plt.title(title)
         Plotter.subplot_index += 1
-
 
     @staticmethod
     def plot(tensor: Union[torch.Tensor, np.ndarray], title: Optional[str] = None):
@@ -59,7 +63,10 @@ class Plotter:
         while len(tensor.shape) > 3 and tensor.shape[0] == 1:
             tensor = tensor[0]
         if len(tensor.shape) > 3:
-            raise Exception("The tensor must have 3 dimensions or less! The current dimensions are: " + str(tensor.shape))
+            raise Exception(
+                "The tensor must have 3 dimensions or less! The current dimensions are: "
+                + str(tensor.shape)
+            )
         if tensor.shape[0] == 3 or tensor.shape[2] == 3:
             Plotter.plot_image(tensor, title)
         else:

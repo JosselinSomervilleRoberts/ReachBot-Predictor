@@ -2,7 +2,6 @@ import os
 import shutil
 
 
-
 # The OUTPOUT_FOLDER will have this format:
 
 # OUTPUT_FOLDER
@@ -30,7 +29,6 @@ import shutil
 #         └── {{num_val}}.png
 
 
-
 # Each folder input should have this format:
 
 # INPUTS[i]["path"]
@@ -44,7 +42,6 @@ import shutil
 #     ├── 1.png
 #     ├── ...
 #     └── {{num_masks}}.png
-
 
 
 # The object INPUTS[i] should have this format:

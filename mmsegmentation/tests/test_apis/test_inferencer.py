@@ -14,20 +14,17 @@ from mmseg.registry import MODELS
 from mmseg.utils import register_all_modules
 
 
-@MODELS.register_module(name='InferExampleHead')
+@MODELS.register_module(name="InferExampleHead")
 class ExampleDecodeHead(BaseDecodeHead):
-
     def __init__(self, num_classes=19, out_channels=None):
-        super().__init__(
-            3, 3, num_classes=num_classes, out_channels=out_channels)
+        super().__init__(3, 3, num_classes=num_classes, out_channels=out_channels)
 
     def forward(self, inputs):
         return self.cls_seg(inputs[0])
 
 
-@MODELS.register_module(name='InferExampleBackbone')
+@MODELS.register_module(name="InferExampleBackbone")
 class ExampleBackbone(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.conv = nn.Conv2d(3, 3, 3)
@@ -39,21 +36,19 @@ class ExampleBackbone(nn.Module):
         return [self.conv(x)]
 
 
-@MODELS.register_module(name='InferExampleModel')
+@MODELS.register_module(name="InferExampleModel")
 class ExampleModel(EncoderDecoder):
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
 
 class ExampleDataset(Dataset):
-
     def __init__(self) -> None:
         super().__init__()
         self.pipeline = [
-            dict(type='LoadImageFromFile'),
-            dict(type='LoadAnnotations'),
-            dict(type='PackSegInputs')
+            dict(type="LoadImageFromFile"),
+            dict(type="LoadAnnotations"),
+            dict(type="PackSegInputs"),
         ]
 
     def __getitem__(self, idx):
@@ -75,19 +70,22 @@ def test_inferencer():
     )
 
     visualizer = dict(
-        type='SegLocalVisualizer',
-        vis_backends=[dict(type='LocalVisBackend')],
-        name='visualizer')
+        type="SegLocalVisualizer",
+        vis_backends=[dict(type="LocalVisBackend")],
+        name="visualizer",
+    )
 
     cfg_dict = dict(
         model=dict(
-            type='InferExampleModel',
-            data_preprocessor=dict(type='SegDataPreProcessor'),
-            backbone=dict(type='InferExampleBackbone'),
-            decode_head=dict(type='InferExampleHead'),
-            test_cfg=dict(mode='whole')),
+            type="InferExampleModel",
+            data_preprocessor=dict(type="SegDataPreProcessor"),
+            backbone=dict(type="InferExampleBackbone"),
+            decode_head=dict(type="InferExampleHead"),
+            test_cfg=dict(mode="whole"),
+        ),
         visualizer=visualizer,
-        test_dataloader=data_loader)
+        test_dataloader=data_loader,
+    )
     cfg = ConfigDict(cfg_dict)
     model = MODELS.build(cfg.model)
 
@@ -107,7 +105,7 @@ def test_inferencer():
     results = infer(imgs, out_dir=tempfile.gettempdir())
 
     # test results
-    assert 'predictions' in results
-    assert 'visualization' in results
-    assert len(results['predictions']) == 2
-    assert results['predictions'][0].shape == (4, 4)
+    assert "predictions" in results
+    assert "visualization" in results
+    assert len(results["predictions"]) == 2
+    assert results["predictions"][0].shape == (4, 4)

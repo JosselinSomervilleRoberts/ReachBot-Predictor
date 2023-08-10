@@ -9,6 +9,7 @@ from prettytable import PrettyTable
 # from .reachbot_metric_utils import compute_all_metrics_on_single_image
 from .metrics import crack_metrics
 
+
 @METRICS.register_module()
 class ReachbotMetric(BaseMetric):
     def __init__(

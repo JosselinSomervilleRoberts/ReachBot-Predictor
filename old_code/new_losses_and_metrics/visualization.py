@@ -15,7 +15,9 @@ def show_mask(mask: np.ndarray, title: Optional[str] = None):
 def show_image(image: np.ndarray):
     assert len(image.shape) == 3, "The image must be a 3D array"
     assert image.dtype == np.uint8, "The image must be a uint8 array"
-    assert image.shape[2] == 3, "The image must have 3 channels positioned in the last dimension"
+    assert (
+        image.shape[2] == 3
+    ), "The image must have 3 channels positioned in the last dimension"
     plt.imshow(image)
     plt.show()
 
@@ -23,7 +25,7 @@ def show_image(image: np.ndarray):
 def show_masks(masks: List[np.ndarray], colors: Optional[List[List[int]]] = None):
     # Plots a list of masks in different colors
     if colors is None:
-        colors = [[255,255,255], [255, 0, 0], [0, 255, 0], [0, 0, 255]]
+        colors = [[255, 255, 255], [255, 0, 0], [0, 255, 0], [0, 0, 255]]
     assert len(masks) <= len(colors), "Not enough colors to plot the masks"
 
     # Create a black image

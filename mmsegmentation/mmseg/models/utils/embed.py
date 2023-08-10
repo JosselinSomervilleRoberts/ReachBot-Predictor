@@ -40,11 +40,11 @@ class AdaptivePadding(nn.Module):
         >>> assert (out.shape[2], out.shape[3]) == (16, 32)
     """
 
-    def __init__(self, kernel_size=1, stride=1, dilation=1, padding='corner'):
+    def __init__(self, kernel_size=1, stride=1, dilation=1, padding="corner"):
 
         super().__init__()
 
-        assert padding in ('same', 'corner')
+        assert padding in ("same", "corner")
 
         kernel_size = to_2tuple(kernel_size)
         stride = to_2tuple(stride)
@@ -61,22 +61,25 @@ class AdaptivePadding(nn.Module):
         stride_h, stride_w = self.stride
         output_h = math.ceil(input_h / stride_h)
         output_w = math.ceil(input_w / stride_w)
-        pad_h = max((output_h - 1) * stride_h +
-                    (kernel_h - 1) * self.dilation[0] + 1 - input_h, 0)
-        pad_w = max((output_w - 1) * stride_w +
-                    (kernel_w - 1) * self.dilation[1] + 1 - input_w, 0)
+        pad_h = max(
+            (output_h - 1) * stride_h + (kernel_h - 1) * self.dilation[0] + 1 - input_h,
+            0,
+        )
+        pad_w = max(
+            (output_w - 1) * stride_w + (kernel_w - 1) * self.dilation[1] + 1 - input_w,
+            0,
+        )
         return pad_h, pad_w
 
     def forward(self, x):
         pad_h, pad_w = self.get_pad_shape(x.size()[-2:])
         if pad_h > 0 or pad_w > 0:
-            if self.padding == 'corner':
+            if self.padding == "corner":
                 x = F.pad(x, [0, pad_w, 0, pad_h])
-            elif self.padding == 'same':
-                x = F.pad(x, [
-                    pad_w // 2, pad_w - pad_w // 2, pad_h // 2,
-                    pad_h - pad_h // 2
-                ])
+            elif self.padding == "same":
+                x = F.pad(
+                    x, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2]
+                )
         return x
 
 
@@ -108,18 +111,20 @@ class PatchEmbed(BaseModule):
             initialization. Default: None.
     """
 
-    def __init__(self,
-                 in_channels=3,
-                 embed_dims=768,
-                 conv_type='Conv2d',
-                 kernel_size=16,
-                 stride=None,
-                 padding='corner',
-                 dilation=1,
-                 bias=True,
-                 norm_cfg=None,
-                 input_size=None,
-                 init_cfg=None):
+    def __init__(
+        self,
+        in_channels=3,
+        embed_dims=768,
+        conv_type="Conv2d",
+        kernel_size=16,
+        stride=None,
+        padding="corner",
+        dilation=1,
+        bias=True,
+        norm_cfg=None,
+        input_size=None,
+        init_cfg=None,
+    ):
         super().__init__(init_cfg=init_cfg)
 
         self.embed_dims = embed_dims
@@ -135,7 +140,8 @@ class PatchEmbed(BaseModule):
                 kernel_size=kernel_size,
                 stride=stride,
                 dilation=dilation,
-                padding=padding)
+                padding=padding,
+            )
             # disable the padding of conv
             padding = 0
         else:
@@ -150,7 +156,8 @@ class PatchEmbed(BaseModule):
             stride=stride,
             padding=padding,
             dilation=dilation,
-            bias=bias)
+            bias=bias,
+        )
 
         if norm_cfg is not None:
             self.norm = build_norm_layer(norm_cfg, embed_dims)[1]
@@ -171,10 +178,12 @@ class PatchEmbed(BaseModule):
                 input_size = (input_h, input_w)
 
             # https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
-            h_out = (input_size[0] + 2 * padding[0] - dilation[0] *
-                     (kernel_size[0] - 1) - 1) // stride[0] + 1
-            w_out = (input_size[1] + 2 * padding[1] - dilation[1] *
-                     (kernel_size[1] - 1) - 1) // stride[1] + 1
+            h_out = (
+                input_size[0] + 2 * padding[0] - dilation[0] * (kernel_size[0] - 1) - 1
+            ) // stride[0] + 1
+            w_out = (
+                input_size[1] + 2 * padding[1] - dilation[1] * (kernel_size[1] - 1) - 1
+            ) // stride[1] + 1
             self.init_out_size = (h_out, w_out)
         else:
             self.init_input_size = None
@@ -233,16 +242,18 @@ class PatchMerging(BaseModule):
             Default: None.
     """
 
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 kernel_size=2,
-                 stride=None,
-                 padding='corner',
-                 dilation=1,
-                 bias=False,
-                 norm_cfg=dict(type='LN'),
-                 init_cfg=None):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size=2,
+        stride=None,
+        padding="corner",
+        dilation=1,
+        bias=False,
+        norm_cfg=dict(type="LN"),
+        init_cfg=None,
+    ):
         super().__init__(init_cfg=init_cfg)
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -260,7 +271,8 @@ class PatchMerging(BaseModule):
                 kernel_size=kernel_size,
                 stride=stride,
                 dilation=dilation,
-                padding=padding)
+                padding=padding,
+            )
             # disable the padding of unfold
             padding = 0
         else:
@@ -268,10 +280,8 @@ class PatchMerging(BaseModule):
 
         padding = to_2tuple(padding)
         self.sampler = nn.Unfold(
-            kernel_size=kernel_size,
-            dilation=dilation,
-            padding=padding,
-            stride=stride)
+            kernel_size=kernel_size, dilation=dilation, padding=padding, stride=stride
+        )
 
         sample_dim = kernel_size[0] * kernel_size[1] * in_channels
 
@@ -297,13 +307,12 @@ class PatchMerging(BaseModule):
                     (Merged_H, Merged_W).
         """
         B, L, C = x.shape
-        assert isinstance(input_size, Sequence), f'Expect ' \
-                                                 f'input_size is ' \
-                                                 f'`Sequence` ' \
-                                                 f'but get {input_size}'
+        assert isinstance(input_size, Sequence), (
+            f"Expect " f"input_size is " f"`Sequence` " f"but get {input_size}"
+        )
 
         H, W = input_size
-        assert L == H * W, 'input feature has wrong size'
+        assert L == H * W, "input feature has wrong size"
 
         x = x.view(B, H, W, C).permute([0, 3, 1, 2])  # B, C, H, W
         # Use nn.Unfold to merge patch. About 25% faster than original method,
@@ -316,12 +325,18 @@ class PatchMerging(BaseModule):
         x = self.sampler(x)
         # if kernel_size=2 and stride=2, x should has shape (B, 4*C, H/2*W/2)
 
-        out_h = (H + 2 * self.sampler.padding[0] - self.sampler.dilation[0] *
-                 (self.sampler.kernel_size[0] - 1) -
-                 1) // self.sampler.stride[0] + 1
-        out_w = (W + 2 * self.sampler.padding[1] - self.sampler.dilation[1] *
-                 (self.sampler.kernel_size[1] - 1) -
-                 1) // self.sampler.stride[1] + 1
+        out_h = (
+            H
+            + 2 * self.sampler.padding[0]
+            - self.sampler.dilation[0] * (self.sampler.kernel_size[0] - 1)
+            - 1
+        ) // self.sampler.stride[0] + 1
+        out_w = (
+            W
+            + 2 * self.sampler.padding[1]
+            - self.sampler.dilation[1] * (self.sampler.kernel_size[1] - 1)
+            - 1
+        ) // self.sampler.stride[1] + 1
 
         output_size = (out_h, out_w)
         x = x.transpose(1, 2)  # B, H/2*W/2, 4*C

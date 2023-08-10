@@ -12,7 +12,8 @@ def test_feature2pyramid():
     inputs = [torch.randn(1, embed_dim, 32, 32) for i in range(len(rescales))]
 
     fpn = Feature2Pyramid(
-        embed_dim, rescales, norm_cfg=dict(type='BN', requires_grad=True))
+        embed_dim, rescales, norm_cfg=dict(type="BN", requires_grad=True)
+    )
     outputs = fpn(inputs)
     assert outputs[0].shape == torch.Size([1, 64, 128, 128])
     assert outputs[1].shape == torch.Size([1, 64, 64, 64])
@@ -24,7 +25,8 @@ def test_feature2pyramid():
     inputs = [torch.randn(1, embed_dim, 32, 32) for i in range(len(rescales))]
 
     fpn = Feature2Pyramid(
-        embed_dim, rescales, norm_cfg=dict(type='BN', requires_grad=True))
+        embed_dim, rescales, norm_cfg=dict(type="BN", requires_grad=True)
+    )
     outputs = fpn(inputs)
     assert outputs[0].shape == torch.Size([1, 64, 64, 64])
     assert outputs[1].shape == torch.Size([1, 64, 32, 32])
@@ -35,4 +37,5 @@ def test_feature2pyramid():
     rescales = [4, 2, 0.25, 0]
     with pytest.raises(KeyError):
         fpn = Feature2Pyramid(
-            embed_dim, rescales, norm_cfg=dict(type='BN', requires_grad=True))
+            embed_dim, rescales, norm_cfg=dict(type="BN", requires_grad=True)
+        )

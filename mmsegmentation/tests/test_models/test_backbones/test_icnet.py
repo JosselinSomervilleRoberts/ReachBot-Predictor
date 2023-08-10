@@ -14,26 +14,29 @@ def test_icnet_backbone():
             light_branch_middle_channels=8,
             psp_out_channels=128,
             out_channels=(16, 128, 128),
-            backbone_cfg=None)
+            backbone_cfg=None,
+        )
 
     # Test ICNet Standard Forward
     model = ICNet(
         layer_channels=(128, 512),
         backbone_cfg=dict(
-            type='ResNetV1c',
+            type="ResNetV1c",
             in_channels=3,
             depth=18,
             num_stages=4,
             out_indices=(0, 1, 2, 3),
             dilations=(1, 1, 2, 4),
             strides=(1, 2, 1, 1),
-            norm_cfg=dict(type='BN', requires_grad=True),
+            norm_cfg=dict(type="BN", requires_grad=True),
             norm_eval=False,
-            style='pytorch',
-            contract_dilation=True),
+            style="pytorch",
+            contract_dilation=True,
+        ),
     )
-    assert hasattr(model.backbone,
-                   'maxpool') and model.backbone.maxpool.ceil_mode is True
+    assert (
+        hasattr(model.backbone, "maxpool") and model.backbone.maxpool.ceil_mode is True
+    )
     model.init_weights()
     model.train()
     batch_size = 2

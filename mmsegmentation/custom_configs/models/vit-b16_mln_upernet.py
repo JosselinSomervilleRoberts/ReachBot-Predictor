@@ -6,9 +6,9 @@ _base_ = [
 # AdamW optimizer, no weight decay for position embedding & layer norm
 # in backbone
 optim_wrapper = dict(
-    #_delete_=True,
+    # _delete_=True,
     type="OptimWrapper",
-    optimizer=dict(type="AdamW", lr=0.001, betas=(0.9, 0.999), weight_decay=0.01),
+    optimizer=dict(type="AdamW", lr=0.00001, betas=(0.9, 0.999), weight_decay=0.01),
     paramwise_cfg=dict(
         custom_keys={
             "pos_embed": dict(decay_mult=0.0),

@@ -12,15 +12,15 @@ def soft_dilate_large(img: torch.Tensor, size: int = 1) -> torch.Tensor:
     Args:
         img: Input image.
         size: By how many pixels to dilate.
-    
+
     Returns:
         Dilated image.
     """
     assert size >= 1, "Size should be at least 1"
 
-    p1 = F.max_pool2d(img, (1+2*size,-1+2*size), (1,1), (size,size-1))
-    p2 = F.max_pool2d(img, (-1+2*size,1+2*size), (1,1), (size-1,size))
-    return torch.max(p1,p2)
+    p1 = F.max_pool2d(img, (1 + 2 * size, -1 + 2 * size), (1, 1), (size, size - 1))
+    p2 = F.max_pool2d(img, (-1 + 2 * size, 1 + 2 * size), (1, 1), (size - 1, size))
+    return torch.max(p1, p2)
 
 
 def apply_smooth_gaussian_diffusion(

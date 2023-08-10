@@ -12,20 +12,22 @@ def test_ic_neck():
     neck = ICNeck(
         in_channels=(4, 16, 16),
         out_channels=8,
-        norm_cfg=dict(type='SyncBN'),
-        align_corners=False)
+        norm_cfg=dict(type="SyncBN"),
+        align_corners=False,
+    )
     assert _conv_has_norm(neck, sync_bn=True)
 
     inputs = [
         torch.randn(1, 4, 32, 64),
         torch.randn(1, 16, 16, 32),
-        torch.randn(1, 16, 8, 16)
+        torch.randn(1, 16, 8, 16),
     ]
     neck = ICNeck(
         in_channels=(4, 16, 16),
         out_channels=4,
-        norm_cfg=dict(type='BN', requires_grad=True),
-        align_corners=False)
+        norm_cfg=dict(type="BN", requires_grad=True),
+        align_corners=False,
+    )
     if torch.cuda.is_available():
         neck, inputs = to_cuda(neck, inputs)
 
@@ -49,5 +51,6 @@ def test_ic_neck_input_channels():
         ICNeck(
             in_channels=(16, 64, 64, 64),
             out_channels=32,
-            norm_cfg=dict(type='BN', requires_grad=True),
-            align_corners=False)
+            norm_cfg=dict(type="BN", requires_grad=True),
+            align_corners=False,
+        )

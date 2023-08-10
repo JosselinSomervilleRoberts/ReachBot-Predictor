@@ -13,7 +13,8 @@ def test_segmenter_mask_transformer_head():
         num_layers=2,
         num_heads=3,
         embed_dims=192,
-        dropout_ratio=0.0)
+        dropout_ratio=0.0,
+    )
     assert _conv_has_norm(head, sync_bn=True)
     head.init_weights()
 

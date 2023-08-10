@@ -14,7 +14,9 @@ from toolbox.printing import print_color, warn, debug
 import wandb
 
 
-def to_np(image: Union[np.ndarray, torch.Tensor, Image.Image], dtype: np.dtype = np.float32) -> np.ndarray:
+def to_np(
+    image: Union[np.ndarray, torch.Tensor, Image.Image], dtype: np.dtype = np.float32
+) -> np.ndarray:
     """
     Converts a PIL image, a numpy array or a PyTorch tensor to a numpy array.
     Converts to an array from 0 to 1 by default.
@@ -56,7 +58,8 @@ def preprocess_for_comparison(
     ground_truth: Union[np.ndarray, torch.Tensor, Image.Image],
     prediction: Union[np.ndarray, torch.Tensor, Image.Image],
     dtype: np.dtype = np.float32,
-    diffuse_sigma_factor: float = 0.0) -> Tuple[np.ndarray, np.ndarray]:
+    diffuse_sigma_factor: float = 0.0,
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Preprocesses the ground truth and the prediction for comparison.
     Returns both images as numpy arrays of type np.float32 (from 0 to 1).
@@ -64,31 +67,33 @@ def preprocess_for_comparison(
     """
     ground_truth = to_np(ground_truth, dtype=dtype)
     prediction = to_np(prediction, dtype=dtype)
-    assert ground_truth.shape == prediction.shape, \
-        f"Expected ground truth and prediction to have the same shape. " \
+    assert ground_truth.shape == prediction.shape, (
+        f"Expected ground truth and prediction to have the same shape. "
         f"Got {ground_truth.shape} and {prediction.shape}."
-    
+    )
+
     # Applies a gaussian diffusion to the images
     if diffuse_sigma_factor > 0:
-        assert dtype == np.float32, \
-            f"Expected dtype to be np.float32 when using a gaussian diffusion. " \
+        assert dtype == np.float32, (
+            f"Expected dtype to be np.float32 when using a gaussian diffusion. "
             f"Got {dtype}."
+        )
         ground_truth = apply_gaussian_diffusion(ground_truth, diffuse_sigma_factor)
         prediction = apply_gaussian_diffusion(prediction, diffuse_sigma_factor)
 
     return ground_truth, prediction
-        
+
 
 def apply_gaussian_diffusion(
-    image: Union[np.ndarray, torch.Tensor, Image.Image],
-    sigma_factor: float = 0.1) -> np.ndarray:
+    image: Union[np.ndarray, torch.Tensor, Image.Image], sigma_factor: float = 0.1
+) -> np.ndarray:
     """
     Applies a gaussian diffusion to an image.
     """
     image = to_np(image)
     sigma = sigma_factor * np.sqrt(image.shape[0] * image.shape[1])
     distance = scipy.ndimage.distance_transform_edt(image == 0)
-    return np.exp(-(distance ** 2 / (2 * sigma ** 2)))
+    return np.exp(-(distance**2 / (2 * sigma**2)))
 
 
 def mask_to_bbox(mask: np.ndarray) -> np.ndarray:
@@ -114,7 +119,9 @@ def mask_to_bbox(mask: np.ndarray) -> np.ndarray:
     return bbox
 
 
-def separate_masks(mask: Union[np.ndarray, torch.Tensor, Image.Image]) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+def separate_masks(
+    mask: Union[np.ndarray, torch.Tensor, Image.Image]
+) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     """If they are several convex components in the mask, separate them into individual masks.
     This returns a list of coordinates of the bounding boxes of the masks."""
     mask = to_np(mask, dtype=bool)
@@ -126,7 +133,9 @@ def separate_masks(mask: Union[np.ndarray, torch.Tensor, Image.Image]) -> Tuple[
             continue
         blob = (separated_mask == i).astype(int)
         # Get the bounding box
-        bbox = np.array((Image.fromarray(blob.squeeze(-1).astype(np.uint8) * 255)).getbbox())
+        bbox = np.array(
+            (Image.fromarray(blob.squeeze(-1).astype(np.uint8) * 255)).getbbox()
+        )
 
         # Add some padding to the bounding box
         bbox = (bbox[0] - 10, bbox[1] - 10, bbox[2] + 10, bbox[3] + 10)
@@ -140,18 +149,20 @@ def separate_masks(mask: Union[np.ndarray, torch.Tensor, Image.Image]) -> Tuple[
         )
         bbox = np.array(bbox)
         bboxes.append(bbox)
-        blobs.append(blob[bbox[1]:bbox[3], bbox[0]:bbox[2]])
+        blobs.append(blob[bbox[1] : bbox[3], bbox[0] : bbox[2]])
 
     return blobs, bboxes
 
 
-def separate_masks_from_bbox(mask: Union[np.ndarray, torch.Tensor, Image.Image], bboxes: List[np.ndarray]) -> List[np.ndarray]:
+def separate_masks_from_bbox(
+    mask: Union[np.ndarray, torch.Tensor, Image.Image], bboxes: List[np.ndarray]
+) -> List[np.ndarray]:
     """Given a mask and some bounding boxes, crop the mask to each bounding box."""
     mask = to_np(mask, dtype=bool)
     blobs: List[np.ndarray] = []
 
     for bbox in bboxes:
-        blob = mask[bbox[1]:bbox[3], bbox[0]:bbox[2]]
+        blob = mask[bbox[1] : bbox[3], bbox[0] : bbox[2]]
         blobs.append(blob)
 
     return blobs
@@ -159,7 +170,8 @@ def separate_masks_from_bbox(mask: Union[np.ndarray, torch.Tensor, Image.Image],
 
 def binary_iou(
     ground_truth: Union[np.ndarray, torch.Tensor, Image.Image],
-    prediction: Union[np.ndarray, torch.Tensor, Image.Image]) -> float:
+    prediction: Union[np.ndarray, torch.Tensor, Image.Image],
+) -> float:
     """
     Computes the Intersection over Union (IoU) score between a ground truth
     segmentation and a predicted segmentation.
@@ -172,7 +184,9 @@ def binary_iou(
     Returns:
         The IoU score.
     """
-    ground_truth, prediction = preprocess_for_comparison(ground_truth, prediction, dtype=bool)
+    ground_truth, prediction = preprocess_for_comparison(
+        ground_truth, prediction, dtype=bool
+    )
 
     # Computes the intersection and the union
     intersection = np.logical_and(ground_truth, prediction)
@@ -184,7 +198,8 @@ def binary_iou(
 
 def float_iou(
     ground_truth: Union[np.ndarray, torch.Tensor, Image.Image],
-    prediction: Union[np.ndarray, torch.Tensor, Image.Image]) -> float:
+    prediction: Union[np.ndarray, torch.Tensor, Image.Image],
+) -> float:
     """
     Computes the Intersection over Union (IoU) score between a ground truth
     segmentation and a predicted segmentation.
@@ -199,7 +214,7 @@ def float_iou(
     Args:
         ground_truth: The ground truth segmentation.
         prediction: The predicted segmentation.
-    
+
     Returns:
         The IoU score.
     """
@@ -215,7 +230,8 @@ def float_iou(
 
 def binary_dice(
     ground_truth: Union[np.ndarray, torch.Tensor, Image.Image],
-    prediction: Union[np.ndarray, torch.Tensor, Image.Image]) -> float:
+    prediction: Union[np.ndarray, torch.Tensor, Image.Image],
+) -> float:
     """
     Computes the Dice score between a ground truth segmentation and a predicted
     segmentation.
@@ -228,7 +244,9 @@ def binary_dice(
     Returns:
         The Dice score.
     """
-    ground_truth, prediction = preprocess_for_comparison(ground_truth, prediction, dtype=bool)
+    ground_truth, prediction = preprocess_for_comparison(
+        ground_truth, prediction, dtype=bool
+    )
 
     # Computes the intersection and the union
     intersection = np.logical_and(ground_truth, prediction)
@@ -240,7 +258,8 @@ def binary_dice(
 
 def float_dice(
     ground_truth: Union[np.ndarray, torch.Tensor, Image.Image],
-    prediction: Union[np.ndarray, torch.Tensor, Image.Image]) -> float:
+    prediction: Union[np.ndarray, torch.Tensor, Image.Image],
+) -> float:
     """
     Computes the Dice score between a ground truth segmentation and a predicted
     segmentation.
@@ -275,7 +294,8 @@ def float_dice(
 def binary_distance_proximity(
     ground_truth: Union[np.ndarray, torch.Tensor, Image.Image],
     prediction: Union[np.ndarray, torch.Tensor, Image.Image],
-    sigma_factor: float = 0.1) -> float:
+    sigma_factor: float = 0.1,
+) -> float:
     """
     Computes the distance score defined by:
     score = ratio * sqrt(distance_factor_gt * distance_factor_pred)
@@ -295,7 +315,9 @@ def binary_distance_proximity(
     Returns:
         The distance score.
     """
-    ground_truth, prediction = preprocess_for_comparison(ground_truth, prediction, dtype=bool)
+    ground_truth, prediction = preprocess_for_comparison(
+        ground_truth, prediction, dtype=bool
+    )
 
     if np.sum(prediction) == 0:
         return 0.0
@@ -304,11 +326,15 @@ def binary_distance_proximity(
     sigma = sigma_factor * np.sqrt(ground_truth.shape[0] * ground_truth.shape[1])
     nb_pixels_gt = np.sum(ground_truth)
     nb_pixels_pred = np.sum(prediction)
-    ratio = np.exp(-np.abs(nb_pixels_gt - nb_pixels_pred) / (1+nb_pixels_gt))
+    ratio = np.exp(-np.abs(nb_pixels_gt - nb_pixels_pred) / (1 + nb_pixels_gt))
     distances_gt = scipy.ndimage.distance_transform_edt(ground_truth == 0)
     distances_pred = scipy.ndimage.distance_transform_edt(prediction == 0)
-    distance_factor_gt = np.sum(prediction * np.exp(-distances_gt ** 2 / (2 * sigma ** 2))) / (1+nb_pixels_gt)
-    distance_factor_pred = np.sum(ground_truth * np.exp(-distances_pred ** 2 / (2 * sigma ** 2))) / (1+nb_pixels_pred)
+    distance_factor_gt = np.sum(
+        prediction * np.exp(-(distances_gt**2) / (2 * sigma**2))
+    ) / (1 + nb_pixels_gt)
+    distance_factor_pred = np.sum(
+        ground_truth * np.exp(-(distances_pred**2) / (2 * sigma**2))
+    ) / (1 + nb_pixels_pred)
 
     # Computes the distance score
     return ratio * np.sqrt(distance_factor_gt * distance_factor_pred)
@@ -318,7 +344,8 @@ def float_distance_proximity(
     ground_truth: Union[np.ndarray, torch.Tensor, Image.Image],
     prediction: Union[np.ndarray, torch.Tensor, Image.Image],
     sigma_factor: float = 0.1,
-    threshold: float = 0.5) -> float:
+    threshold: float = 0.5,
+) -> float:
     """
     Generalization of the distance score.
 
@@ -355,39 +382,51 @@ def float_distance_proximity(
 
     # Computes the distance between the two images
     sigma = sigma_factor * np.sqrt(ground_truth.shape[0] * ground_truth.shape[1])
-    nb_pixels_gt = np.sum(ground_truth)         # Number of pixels in the ground truth mask
-    nb_pixels_pred = np.sum(prediction)         # Sum of the probabilities
+    nb_pixels_gt = np.sum(ground_truth)  # Number of pixels in the ground truth mask
+    nb_pixels_pred = np.sum(prediction)  # Sum of the probabilities
     ratio = np.exp(-np.abs(nb_pixels_gt - nb_pixels_pred) / nb_pixels_gt)
     distances_gt = scipy.ndimage.distance_transform_edt(prediction < threshold)
     distances_pred = scipy.ndimage.distance_transform_edt(ground_truth == 0)
-    distance_factor_gt = np.sum(prediction * np.exp(-distances_gt ** 2 / (2 * sigma ** 2))) / nb_pixels_gt
-    distance_factor_pred = np.sum(ground_truth * np.exp(-distances_pred ** 2 / (2 * sigma ** 2))) / nb_pixels_pred
+    distance_factor_gt = (
+        np.sum(prediction * np.exp(-(distances_gt**2) / (2 * sigma**2)))
+        / nb_pixels_gt
+    )
+    distance_factor_pred = (
+        np.sum(ground_truth * np.exp(-(distances_pred**2) / (2 * sigma**2)))
+        / nb_pixels_pred
+    )
 
     # Computes the distance score
     return ratio * np.sqrt(distance_factor_gt * distance_factor_pred)
 
-        
+
 def gaussian_binary_iou(
     ground_truth: Union[np.ndarray, torch.Tensor, Image.Image],
     prediction: Union[np.ndarray, torch.Tensor, Image.Image],
-    sigma_factor: float = 0.1) -> float:
+    sigma_factor: float = 0.1,
+) -> float:
     """
     Computes the IoU score between a ground truth segmentation and a predicted
     segmentation after applying a gaussian diffusion to both images.
     """
-    diffuse_gt, diffuse_pred = preprocess_for_comparison(ground_truth, prediction, diffuse_sigma_factor=sigma_factor)
+    diffuse_gt, diffuse_pred = preprocess_for_comparison(
+        ground_truth, prediction, diffuse_sigma_factor=sigma_factor
+    )
     return float_iou(ground_truth=diffuse_gt, prediction=diffuse_pred)
 
 
 def gaussian_binary_dice(
     ground_truth: Union[np.ndarray, torch.Tensor, Image.Image],
     prediction: Union[np.ndarray, torch.Tensor, Image.Image],
-    sigma_factor: float = 0.1) -> float:
+    sigma_factor: float = 0.1,
+) -> float:
     """
     Computes the Dice score between a ground truth segmentation and a predicted
     segmentation after applying a gaussian diffusion to both images.
     """
-    diffuse_gt, diffuse_pred = preprocess_for_comparison(ground_truth, prediction, diffuse_sigma_factor=sigma_factor)
+    diffuse_gt, diffuse_pred = preprocess_for_comparison(
+        ground_truth, prediction, diffuse_sigma_factor=sigma_factor
+    )
     return float_dice(ground_truth=diffuse_gt, prediction=diffuse_pred)
 
 
@@ -396,63 +435,107 @@ def compute_all_metrics_on_single_image(
     prediction: Optional[Union[np.ndarray, torch.Tensor, Image.Image]] = None,
     prediction_binary: Optional[Union[np.ndarray, torch.Tensor, Image.Image]] = None,
     sigma_factor: float = 0.02,
-    threshold: float = 0.5) -> Dict[str, float]:
+    threshold: float = 0.5,
+) -> Dict[str, float]:
     """
     Computes all the metrics.
     """
     # Checks that either prediction or prediction_binary is not None
-    assert prediction is not None or prediction_binary is not None, \
-        f"Expected either prediction or prediction_binary to be not None. " \
+    assert prediction is not None or prediction_binary is not None, (
+        f"Expected either prediction or prediction_binary to be not None. "
         f"Got prediction={prediction} and prediction_binary={prediction_binary}."
+    )
 
     # Converts to numpy array.
     # This is done in all the metrics but the functions is very fast
     # if the image is already a numpy array.
     ground_truth = to_np(ground_truth, dtype=bool)
-    if prediction is not None: prediction = to_np(prediction)
-    if prediction_binary is not None: prediction_binary = to_np(prediction_binary, dtype=bool)
+    if prediction is not None:
+        prediction = to_np(prediction)
+    if prediction_binary is not None:
+        prediction_binary = to_np(prediction_binary, dtype=bool)
 
     # Computes the metrics
     metrics = {}
     if prediction is not None:
         metrics["float_intersection"] = np.sum(np.minimum(ground_truth, prediction))
         metrics["float_union"] = np.sum(np.maximum(ground_truth, prediction))
-        metrics["float_iou"] = iou_score(intersection=metrics["float_intersection"], union=metrics["float_union"])
-        metrics["float_dice"] = dice_score(intersection=metrics["float_intersection"], union=metrics["float_union"])
-        metrics["float_distance_proximity"] = float_distance_proximity(ground_truth=ground_truth, prediction=prediction, sigma_factor=sigma_factor, threshold=threshold)
-        metrics["average_float"] = (metrics["float_iou"] + metrics["float_dice"] + metrics["float_distance_proximity"]) / 3
+        metrics["float_iou"] = iou_score(
+            intersection=metrics["float_intersection"], union=metrics["float_union"]
+        )
+        metrics["float_dice"] = dice_score(
+            intersection=metrics["float_intersection"], union=metrics["float_union"]
+        )
+        metrics["float_distance_proximity"] = float_distance_proximity(
+            ground_truth=ground_truth,
+            prediction=prediction,
+            sigma_factor=sigma_factor,
+            threshold=threshold,
+        )
+        metrics["average_float"] = (
+            metrics["float_iou"]
+            + metrics["float_dice"]
+            + metrics["float_distance_proximity"]
+        ) / 3
     if prediction_binary is not None:
-        diffuse_gt, diffuse_pred = preprocess_for_comparison(ground_truth, prediction_binary, diffuse_sigma_factor=sigma_factor)
+        diffuse_gt, diffuse_pred = preprocess_for_comparison(
+            ground_truth, prediction_binary, diffuse_sigma_factor=sigma_factor
+        )
         diffuse_intersection = np.sum(np.minimum(diffuse_gt, diffuse_pred))
         diffuse_union = np.sum(np.maximum(diffuse_gt, diffuse_pred))
-        metrics["binary_intersection"] = np.sum(np.logical_and(ground_truth, prediction_binary))
+        metrics["binary_intersection"] = np.sum(
+            np.logical_and(ground_truth, prediction_binary)
+        )
         metrics["binary_union"] = np.sum(np.logical_or(ground_truth, prediction_binary))
-        metrics["binary_iou"] = iou_score(intersection=metrics["binary_intersection"], union=metrics["binary_union"])
-        metrics["binary_dice"] = dice_score(intersection=metrics["binary_intersection"], union=metrics["binary_union"])
-        metrics["binary_distance_proximity"] = binary_distance_proximity(ground_truth=ground_truth, prediction=prediction_binary, sigma_factor=sigma_factor)
-        metrics["gaussian_binary_iou"] = iou_score(intersection=diffuse_intersection, union=diffuse_union)
-        metrics["gaussian_binary_dice"] = dice_score(intersection=diffuse_intersection, union=diffuse_union)
-        metrics["average_binary"] = (metrics["binary_iou"] + metrics["binary_dice"] + metrics["binary_distance_proximity"] + metrics["gaussian_binary_iou"] + metrics["gaussian_binary_dice"]) / 5
+        metrics["binary_iou"] = iou_score(
+            intersection=metrics["binary_intersection"], union=metrics["binary_union"]
+        )
+        metrics["binary_dice"] = dice_score(
+            intersection=metrics["binary_intersection"], union=metrics["binary_union"]
+        )
+        metrics["binary_distance_proximity"] = binary_distance_proximity(
+            ground_truth=ground_truth,
+            prediction=prediction_binary,
+            sigma_factor=sigma_factor,
+        )
+        metrics["gaussian_binary_iou"] = iou_score(
+            intersection=diffuse_intersection, union=diffuse_union
+        )
+        metrics["gaussian_binary_dice"] = dice_score(
+            intersection=diffuse_intersection, union=diffuse_union
+        )
+        metrics["average_binary"] = (
+            metrics["binary_iou"]
+            + metrics["binary_dice"]
+            + metrics["binary_distance_proximity"]
+            + metrics["gaussian_binary_iou"]
+            + metrics["gaussian_binary_dice"]
+        ) / 5
 
     # Compute average metrics
     avg: float = 0.0
     count: int = 0
     for key, value in metrics.items():
-        if not key.startswith("average") and "intersection" not in key and "union" not in key:
+        if (
+            not key.startswith("average")
+            and "intersection" not in key
+            and "union" not in key
+        ):
             avg += value
             count += 1
     metrics["average"] = avg / count
 
     return metrics
-    
+
 
 def compute_all_metrics(
     ground_truth: Union[np.ndarray, torch.Tensor, Image.Image],
     prediction: Optional[Union[np.ndarray, torch.Tensor, Image.Image]] = None,
     prediction_binary: Optional[Union[np.ndarray, torch.Tensor, Image.Image]] = None,
     sigma_factor: float = 0.02,
-    threshold: float=0.5,
-    separate_images: bool = True) -> dict:
+    threshold: float = 0.5,
+    separate_images: bool = True,
+) -> dict:
     """
     Computes all the metrics.
     This is done on the global image and on each individual mask.
@@ -464,7 +547,8 @@ def compute_all_metrics(
         prediction=prediction,
         prediction_binary=prediction_binary,
         sigma_factor=sigma_factor,
-        threshold=threshold)
+        threshold=threshold,
+    )
     if not separate_images:
         return metrics_full
 
@@ -479,20 +563,27 @@ def compute_all_metrics(
         prediction_masks = separate_masks_from_bbox(prediction, bboxes)
     if prediction_binary is not None:
         prediction_binary_masks = separate_masks_from_bbox(prediction_binary, bboxes)
-    
+
     # Compute the metrics for each mask
     if len(ground_truth_masks) == 0:
         warn("No masks found in the ground truth image.")
         ground_truth_masks = [ground_truth]
         prediction_masks = [prediction] if prediction is not None else None
-        prediction_binary_masks = [prediction_binary] if prediction_binary is not None else None
+        prediction_binary_masks = (
+            [prediction_binary] if prediction_binary is not None else None
+        )
     for i, ground_truth_mask in enumerate(ground_truth_masks):
-        metrics_individual.append(compute_all_metrics_on_single_image(
-            ground_truth=ground_truth_mask,
-            prediction=prediction_masks[i] if prediction is not None else None,
-            prediction_binary=prediction_binary_masks[i] if prediction_binary is not None else None,
-            sigma_factor=sigma_factor,
-            threshold=threshold))
+        metrics_individual.append(
+            compute_all_metrics_on_single_image(
+                ground_truth=ground_truth_mask,
+                prediction=prediction_masks[i] if prediction is not None else None,
+                prediction_binary=prediction_binary_masks[i]
+                if prediction_binary is not None
+                else None,
+                sigma_factor=sigma_factor,
+                threshold=threshold,
+            )
+        )
 
     # Compute average and std metrics for the individual masks
     metrics_avg_individual: Dict[str, float] = {}
@@ -511,8 +602,13 @@ def compute_all_metrics(
 
     return metrics
 
-        
-def log_metrics(metrics: Union[dict, list], log_to_wandb: bool = True, step: Optional[int] = None, prefix: str = "") -> float:
+
+def log_metrics(
+    metrics: Union[dict, list],
+    log_to_wandb: bool = True,
+    step: Optional[int] = None,
+    prefix: str = "",
+) -> float:
     """
     Prints the metrics.
     """
@@ -522,19 +618,31 @@ def log_metrics(metrics: Union[dict, list], log_to_wandb: bool = True, step: Opt
         # Check if "full_mask" is in the dict
         if "full_mask" in metrics:
             # This means that we have metrics for full image and individual masks
-            print_color(f"Metrics for 1 image (with {len(metrics['individual_masks'])} masks):", color="blue")
+            print_color(
+                f"Metrics for 1 image (with {len(metrics['individual_masks'])} masks):",
+                color="blue",
+            )
             for key, val_full in metrics["full_mask"].items():
                 if not "intersection" in key and not "union" in key:
                     val_std_indiv = metrics["std_individual_masks"][key]
                     val_avg_indiv = metrics["avg_individual_masks"][key]
                     wandb_metrics[f"{prefix}Avg full mask/" + key] = val_full
-                    wandb_metrics[f"{prefix}Avg individual masks/" + key] = val_avg_indiv
-                    wandb_metrics[f"{prefix}Std individual masks/" + key] = val_std_indiv
+                    wandb_metrics[
+                        f"{prefix}Avg individual masks/" + key
+                    ] = val_avg_indiv
+                    wandb_metrics[
+                        f"{prefix}Std individual masks/" + key
+                    ] = val_std_indiv
                     if key == "average":
                         return_value = val_full
-                        print_color(f" {key}: {val_full:.3f} (Indiv: {val_avg_indiv:.3f} ± {val_std_indiv:.3f})", color="bold")
+                        print_color(
+                            f" {key}: {val_full:.3f} (Indiv: {val_avg_indiv:.3f} ± {val_std_indiv:.3f})",
+                            color="bold",
+                        )
                     else:
-                        print(f" - {key}: {val_full:.3f} (Indiv: {val_avg_indiv:.3f} ± {val_std_indiv:.3f})")
+                        print(
+                            f" - {key}: {val_full:.3f} (Indiv: {val_avg_indiv:.3f} ± {val_std_indiv:.3f})"
+                        )
         else:
             # This means that we only have metrics for the fll_image, directly in the dict
             print_color(f"Metrics for 1 image:", color="blue")
@@ -557,38 +665,67 @@ def log_metrics(metrics: Union[dict, list], log_to_wandb: bool = True, step: Opt
         if has_full_mask:
             for key in metrics[0]["full_mask"].keys():
                 if "intersection" not in key and "union" not in key:
-                    metrics_avg_full[key] = np.mean([metric["full_mask"][key] for metric in metrics])
-                    metrics_std_full[key] = np.std([metric["full_mask"][key] for metric in metrics])
-                    metrics_avg_indiv[key] = np.mean([metric["avg_individual_masks"][key] for metric in metrics])
-                    metrics_std_indiv[key] = np.mean([metric["std_individual_masks"][key] for metric in metrics])
-                    wandb_metrics[f"{prefix}Avg full mask/" + key] = metrics_avg_full[key]
-                    wandb_metrics[f"{prefix}Std full mask/" + key] = metrics_std_full[key]
-                    wandb_metrics[f"{prefix}Avg individual masks/" + key] = metrics_avg_indiv[key]
-                    wandb_metrics[f"{prefix}Std individual masks/" + key] = metrics_std_indiv[key]
+                    metrics_avg_full[key] = np.mean(
+                        [metric["full_mask"][key] for metric in metrics]
+                    )
+                    metrics_std_full[key] = np.std(
+                        [metric["full_mask"][key] for metric in metrics]
+                    )
+                    metrics_avg_indiv[key] = np.mean(
+                        [metric["avg_individual_masks"][key] for metric in metrics]
+                    )
+                    metrics_std_indiv[key] = np.mean(
+                        [metric["std_individual_masks"][key] for metric in metrics]
+                    )
+                    wandb_metrics[f"{prefix}Avg full mask/" + key] = metrics_avg_full[
+                        key
+                    ]
+                    wandb_metrics[f"{prefix}Std full mask/" + key] = metrics_std_full[
+                        key
+                    ]
+                    wandb_metrics[
+                        f"{prefix}Avg individual masks/" + key
+                    ] = metrics_avg_indiv[key]
+                    wandb_metrics[
+                        f"{prefix}Std individual masks/" + key
+                    ] = metrics_std_indiv[key]
         else:
             for key in metrics[0].keys():
                 if "intersection" not in key and "union" not in key:
                     metrics_avg_full[key] = np.mean([x[key] for x in metrics])
                     metrics_std_full[key] = np.std([x[key] for x in metrics])
-                    wandb_metrics[f"{prefix}Avg full mask/" + key] = metrics_avg_full[key]
-                    wandb_metrics[f"{prefix}Std full mask/" + key] = metrics_std_full[key]
+                    wandb_metrics[f"{prefix}Avg full mask/" + key] = metrics_avg_full[
+                        key
+                    ]
+                    wandb_metrics[f"{prefix}Std full mask/" + key] = metrics_std_full[
+                        key
+                    ]
 
         # Print the metrics to the console
         if has_full_mask:
-            print_color(f"Metrics for {len(metrics)} images (with {sum([len(metric['individual_masks']) for metric in metrics])} masks):", color="blue")
+            print_color(
+                f"Metrics for {len(metrics)} images (with {sum([len(metric['individual_masks']) for metric in metrics])} masks):",
+                color="blue",
+            )
         else:
             print_color(f"Metrics for {len(metrics)} images:", color="blue")
         for key, val_full in metrics_avg_full.items():
             val_std_full = metrics_std_full[key]
             if not "intersection" in key and not "union" in key:
                 color = "bold" if key == "average" else None
-                if key == "average": return_value = val_full
+                if key == "average":
+                    return_value = val_full
                 if has_full_mask:
                     val_avg_indiv = metrics_avg_indiv[key]
                     val_std_indiv = metrics_std_indiv[key]
-                    print_color(f" {key}: {val_full:.3f} ± {val_std_full:.3f} (Indiv: {val_avg_indiv:.3f} ± {val_std_indiv:.3f})", color=color)
+                    print_color(
+                        f" {key}: {val_full:.3f} ± {val_std_full:.3f} (Indiv: {val_avg_indiv:.3f} ± {val_std_indiv:.3f})",
+                        color=color,
+                    )
                 else:
-                    print_color(f" {key}: {val_full:.3f} ± {val_std_full:.3f}", color=color)
+                    print_color(
+                        f" {key}: {val_full:.3f} ± {val_std_full:.3f}", color=color
+                    )
 
     # Log the metrics to wandb
     if log_to_wandb:

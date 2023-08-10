@@ -31,4 +31,3 @@ def dice_score(intersection: float, union: float) -> float:
         The Dice score.
     """
     return 2 * intersection / (union + intersection)
-
