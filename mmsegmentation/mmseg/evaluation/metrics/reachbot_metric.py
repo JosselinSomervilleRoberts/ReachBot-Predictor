@@ -46,7 +46,7 @@ class ReachbotMetric(BaseMetric):
                     ground_truth=label,
                     prediction=pred_label,
                     sigma_factor=self.sigma_factor,
-                    crop=True,
+                    crop=False,
                 )
             )
 

@@ -14,7 +14,7 @@ def crack_metrics(
     ground_truth: Union[np.ndarray, Image.Image],
     prediction: Union[np.ndarray, Image.Image],
     sigma_factor: float = 0.1,
-    crop: bool = True) -> Dict[str, float]:
+    crop: bool = False) -> Dict[str, float]:
     ground_truth, prediction = preprocess_for_comparison(ground_truth, prediction, dtype=bool)
     sigma = sigma_factor * np.sqrt(ground_truth.shape[0] * ground_truth.shape[1])
     if crop: ground_truth, prediction = crop_as_small_as_possible(ground_truth, prediction)
