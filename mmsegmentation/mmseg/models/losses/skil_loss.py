@@ -60,6 +60,7 @@ def skil_loss(
     thinner: bool = False,
     debug: bool = False,
     debug_path: str = None,
+    max_iter: int = 20,
 ):
     """Smooth skeleton loss.
 
@@ -126,10 +127,10 @@ def skil_loss(
 
     # Enlarge the skeleton
     ground_truth_border = apply_smooth_gaussian_diffusion(
-        ground_truth_skeleton, border_size, border_factor
+        ground_truth_skeleton, border_size, border_factor, max_iter
     )
     prediction_border = apply_smooth_gaussian_diffusion(
-        prediction_skeleton, border_size, border_factor
+        prediction_skeleton, border_size, border_factor, max_iter
     )
 
     # Compute the loss
@@ -204,6 +205,7 @@ class SkilLoss(nn.Module):
         border_size: int = 40,
         iterations: int = 50,
         smooth_threshold_factor: float = 10.0,
+        max_iter: int = 20,
         thinner: bool = False,
         use_dice: bool = True,
         epsilon: float = 0.01,
@@ -236,6 +238,7 @@ class SkilLoss(nn.Module):
         self._thinner = thinner
         self._use_dice = use_dice
         self._epsilon = epsilon
+        self._max_iter = max_iter
 
         self.print_params()
 
@@ -268,6 +271,7 @@ class SkilLoss(nn.Module):
             thinner=self._thinner,
             debug=self._debug_every > 0 and self._debug_idx % self._debug_every == 0,
             debug_path=self._debug_path,
+            max_iter=self._max_iter,
         )
         self._debug_idx += 1
 

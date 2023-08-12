@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 
+
 # Source: https://github.com/jocpae/clDice/blob/master/cldice_loss/pytorch/soft_skeleton.py
 def soft_dilate_large(img: torch.Tensor, size: int = 1) -> torch.Tensor:
     """Soft dilation function.
