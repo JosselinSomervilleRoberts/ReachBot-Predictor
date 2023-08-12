@@ -191,6 +191,10 @@ if SAVE_EPOCH_INTERVAL > 0:
         type="CheckpointHook",
         by_epoch=False,
         interval=SAVE_EPOCH_INTERVAL * num_training_samples // train_batch_size,
+        max_keep_ckpts=1,
+        save_last=False,
+        save_best="avg",
+        rule="greater",
     )
 else:
     warn("No checkpoint will be saved.")
