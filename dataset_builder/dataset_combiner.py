@@ -1,5 +1,15 @@
 import os
 import shutil
+import cv2
+import numpy as np
+from tqdm import tqdm
+
+from annotation_modifiers import (
+    ShiftedAnnotationModifier,
+    RandomBranchRemovalModifier,
+    RandomWidthAnnotationModifier,
+    CombinedAnnotationModifier,
+)
 
 
 # The OUTPOUT_FOLDER will have this format:
@@ -51,19 +61,46 @@ import shutil
 #     "for_train": LIST_OF_INDICES_FOR_TRAIN,
 # }
 
-OUTPUT_FOLDER = "../datasets/combined"
+RESIZE_LONGER_SIDE = 1024
+OUTPUT_FOLDER = "../datasets/vessels/combined_degraded"
 INPUTS = [
     {
-        "path": "../datasets/original_data/cracks_real",
-        "for_eval": list(range(0, 50)),
-        "for_train": list(range(50, 100)),
+        "path": "../datasets/original_data/drive",
+        "for_eval": list(range(0, 5)),
+        "for_train": list(range(5, 20)),
     },
     {
-        "path": "../datasets/original_data/cracks_generated",
-        "for_eval": [],
-        "for_train": list(range(0, 136)),
+        "path": "../datasets/original_data/hrf",
+        "for_eval": list(range(0, 11)),
+        "for_train": list(range(11, 45)),
+    },
+    {
+        "path": "../datasets/original_data/chase_db1",
+        "for_eval": list(range(0, 7)),
+        "for_train": list(range(7, 28)),
+    },
+    {
+        "path": "../datasets/original_data/stare",
+        "for_eval": list(range(0, 5)),
+        "for_train": list(range(5, 20)),
     },
 ]
+MODIFIERS = [
+    ShiftedAnnotationModifier("ShiftedAnnotationModifier", shift_range=(-10, 10)),
+    RandomWidthAnnotationModifier("RandomWidthAnnotationModifier", (0.1, 2.0)),
+    RandomBranchRemovalModifier(
+        "RandomBranchRemovalModifier", prob_removal=0.35, selectiveness=0.2
+    ),
+]
+PROB_MODIFIERS = 0.5
+
+modifier = None
+if len(MODIFIERS) > 0:
+    modifier = CombinedAnnotationModifier(
+        "CombinedAnnotationModifier",
+        MODIFIERS,
+        prob=PROB_MODIFIERS,
+    )
 
 
 # Create output folder if it doesn't exist
@@ -87,26 +124,31 @@ for input in INPUTS:
         os.makedirs(val_folder, exist_ok=True)
 
     # Copy images and masks to the output folder
-    for i in input["for_train"]:
-        # Copy image
+    for i in tqdm(input["for_train"], desc="Copying images and masks for training"):
+        # Copy image and resize longer side to RESIZE_LONGER_SIDE
         src = os.path.join(input["path"], "images", str(i) + ".png")
         dst = os.path.join(img_dir, "train", str(idx_train) + ".png")
         shutil.copyfile(src, dst)
 
-        # Copy mask
+        # Copy mask and apply modifier
         src = os.path.join(input["path"], "masks", str(i) + ".png")
         dst = os.path.join(ann_dir, "train", str(idx_train) + ".png")
-        shutil.copyfile(src, dst)
+        mask = cv2.imread(src, cv2.IMREAD_GRAYSCALE)
+        if np.max(mask) > 1:
+            mask = mask / 255
+        if modifier is not None:
+            mask = modifier(mask)
+        cv2.imwrite(dst, mask * 255)
 
         idx_train += 1
 
-    for i in input["for_eval"]:
+    for i in tqdm(input["for_eval"], desc="Copying images and masks for evaluation"):
         # Copy image
         src = os.path.join(input["path"], "images", str(i) + ".png")
         dst = os.path.join(img_dir, "val", str(idx_val) + ".png")
         shutil.copyfile(src, dst)
 
-        # Copy mask
+        # Copy mask without modification
         src = os.path.join(input["path"], "masks", str(i) + ".png")
         dst = os.path.join(ann_dir, "val", str(idx_val) + ".png")
         shutil.copyfile(src, dst)
