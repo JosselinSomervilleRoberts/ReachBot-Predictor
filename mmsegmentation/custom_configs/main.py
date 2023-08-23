@@ -19,6 +19,10 @@ datasets_mappings = {
     "cracks_full_combined": "custom_configs.datasets.cracks_full_combined",
     "drive": "custom_configs.datasets.drive",
     "vessels_combined": "custom_configs.datasets.vessels_combined",
+    "vessels_combined_degraded": "custom_configs.datasets.vessels_combined_degraded",
+    "vessels_combined_cropped": "custom_configs.datasets.vessels_combined_degraded_cropped",
+    "vessels_combined_shifted": "custom_configs.datasets.vessels_combined_degraded_shifted",
+    "vessels_combined_width": "custom_configs.datasets.vessels_combined_degraded_width",
 }
 
 # Associates a learning rate schedule name to its config file
