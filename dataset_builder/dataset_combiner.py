@@ -62,7 +62,7 @@ from annotation_modifiers import (
 # }
 
 RESIZE_LONGER_SIDE = 1024
-OUTPUT_FOLDER = "../datasets/vessels/combined_degraded"
+OUTPUT_FOLDER = "../datasets/vessels/combined_degraded_cropped"
 INPUTS = [
     {
         "path": "../datasets/original_data/drive",
@@ -86,13 +86,13 @@ INPUTS = [
     },
 ]
 MODIFIERS = [
-    ShiftedAnnotationModifier("ShiftedAnnotationModifier", shift_range=(-10, 10)),
-    RandomWidthAnnotationModifier("RandomWidthAnnotationModifier", (0.1, 2.0)),
+    # ShiftedAnnotationModifier("ShiftedAnnotationModifier", shift_range=(-15, 15)),
+    # RandomWidthAnnotationModifier("RandomWidthAnnotationModifier", (0.1, 2.0)),
     RandomBranchRemovalModifier(
         "RandomBranchRemovalModifier", prob_removal=0.35, selectiveness=0.2
     ),
 ]
-PROB_MODIFIERS = 0.5
+PROB_MODIFIERS = 1.0
 
 modifier = None
 if len(MODIFIERS) > 0:
@@ -101,6 +101,32 @@ if len(MODIFIERS) > 0:
         MODIFIERS,
         prob=PROB_MODIFIERS,
     )
+
+
+def cv2_resize_longest(image, size):
+    """
+    Resize the longest side of an image/mask to the desired size while maintaining aspect ratio.
+
+    Args:
+        image (numpy.ndarray): The input image or mask.
+        size (int): The desired size for the longest side.
+
+    Returns:
+        numpy.ndarray: The resized image or mask.
+    """
+    height, width = image.shape[:2]
+
+    if height >= width:
+        new_height = size
+        new_width = int(width * (size / height))
+    else:
+        new_width = size
+        new_height = int(height * (size / width))
+
+    resized_image = cv2.resize(
+        image, (new_width, new_height), interpolation=cv2.INTER_LINEAR
+    )
+    return resized_image
 
 
 # Create output folder if it doesn't exist
@@ -128,17 +154,24 @@ for input in INPUTS:
         # Copy image and resize longer side to RESIZE_LONGER_SIDE
         src = os.path.join(input["path"], "images", str(i) + ".png")
         dst = os.path.join(img_dir, "train", str(idx_train) + ".png")
-        shutil.copyfile(src, dst)
+        orig_img = cv2.imread(src)
+        img = cv2_resize_longest(orig_img, RESIZE_LONGER_SIDE)
+        cv2.imwrite(dst, img)
 
         # Copy mask and apply modifier
-        src = os.path.join(input["path"], "masks", str(i) + ".png")
-        dst = os.path.join(ann_dir, "train", str(idx_train) + ".png")
-        mask = cv2.imread(src, cv2.IMREAD_GRAYSCALE)
+        src_mask = os.path.join(input["path"], "masks", str(i) + ".png")
+        dst_mask = os.path.join(ann_dir, "train", str(idx_train) + ".png")
+        orig_mask = cv2.imread(src_mask, cv2.IMREAD_GRAYSCALE)
+        assert (
+            orig_img.shape[:2] == orig_mask.shape[:2]
+        ), f"{orig_img.shape[:2]} != {orig_mask.shape[:2]}"
+        mask = cv2_resize_longest(orig_mask, RESIZE_LONGER_SIDE)
+        assert img.shape[:2] == mask.shape[:2], f"{img.shape[:2]} != {mask.shape[:2]}"
         if np.max(mask) > 1:
             mask = mask / 255
         if modifier is not None:
             mask = modifier(mask)
-        cv2.imwrite(dst, mask * 255)
+        cv2.imwrite(dst_mask, mask)
 
         idx_train += 1
 
@@ -146,12 +179,20 @@ for input in INPUTS:
         # Copy image
         src = os.path.join(input["path"], "images", str(i) + ".png")
         dst = os.path.join(img_dir, "val", str(idx_val) + ".png")
-        shutil.copyfile(src, dst)
+        orig_img = cv2.imread(src)
+        img = cv2_resize_longest(orig_img, RESIZE_LONGER_SIDE)
+        cv2.imwrite(dst, img)
 
-        # Copy mask without modification
-        src = os.path.join(input["path"], "masks", str(i) + ".png")
-        dst = os.path.join(ann_dir, "val", str(idx_val) + ".png")
-        shutil.copyfile(src, dst)
+        # Copy mask (without modifier)
+        src_mask = os.path.join(input["path"], "masks", str(i) + ".png")
+        dst_mask = os.path.join(ann_dir, "val", str(idx_val) + ".png")
+        orig_mask = cv2.imread(src_mask, cv2.IMREAD_GRAYSCALE)
+        assert (
+            orig_img.shape[:2] == orig_mask.shape[:2]
+        ), f"{orig_img.shape[:2]} != {orig_mask.shape[:2]}"
+        mask = cv2_resize_longest(orig_mask, RESIZE_LONGER_SIDE)
+        assert img.shape[:2] == mask.shape[:2], f"{img.shape[:2]} != {mask.shape[:2]}"
+        cv2.imwrite(dst_mask, mask)
 
         idx_val += 1
 
