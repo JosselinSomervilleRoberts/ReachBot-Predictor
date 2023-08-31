@@ -8,7 +8,10 @@ _base_ = [
 optim_wrapper = dict(
     # _delete_=True,
     type="OptimWrapper",
-    optimizer=dict(type="AdamW", lr=0.00001, betas=(0.9, 0.999), weight_decay=0.01),
+    # for cracks
+    # optimizer=dict(type="AdamW", lr=0.00001, betas=(0.9, 0.999), weight_decay=0.01),
+    # For blood vessels
+    optimizer=dict(type="AdamW", lr=0.00005, betas=(0.9, 0.999), weight_decay=0.01),
     paramwise_cfg=dict(
         custom_keys={
             "pos_embed": dict(decay_mult=0.0),
