@@ -86,6 +86,9 @@ if __name__ == "__main__":
 
     modifier = modifiers[choice - 1]
 
+    # Save the original annotation
+    cv2.imwrite("original.png", annotation * 255)
+
     n_cols = 3
     n_rows = 3
     plt.figure(figsize=(n_cols * 5, n_rows * 5))
@@ -94,6 +97,8 @@ if __name__ == "__main__":
     plt.title("Original")
     for i in tqdm(range(n_cols * n_rows - 1)):
         modified = modifier(annotation)
+        # Save the modified annotation
+        cv2.imwrite(f"modified_{i+1}.png", modified * 255)
         plt.subplot(n_rows, n_cols, i + 2)
         plt.imshow(modified.squeeze())
         plt.title(f"Modified {i+1}")
