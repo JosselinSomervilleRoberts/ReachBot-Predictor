@@ -1,0 +1,4 @@
+Deformed 1 crack metric: 0.6242553508795161
+Deformed 1 dice score: 0.397167616743169
+Deformed 2 crack metric: 0.7671381705755924
+Deformed 2 dice score: 0.3989221736849649
