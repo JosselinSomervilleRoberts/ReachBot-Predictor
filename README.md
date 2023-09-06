@@ -1,8 +1,152 @@
-# Crack
+# SKIL - A Skeleton-based Approach For Rock Crack Detection Towards A Climbing Robot Application
+[paper](TODO) | [dataset](TODO) | [results](TODO)
+
+In proceedings - IEEE IRC 2023
+
+**Authors:** Josselin Somerville Roberts, Yoni Gozlan, Paul-Emiale Giacomelli, Julia Di
+
+## Abstract 
+Conventional wheeled robots are unable to traverse precipitous cave environments, which are of scientific interest for their exposed bedrock stratigraphy. Multi-limbed climbing robot designs, such as ReachBot, are able to grasp irregular surface features and execute climbing motions to overcome obstacles, given that they may find suitable grasp locations. To support grasp site identification, we present a method for detecting thin rock cracks and edges, the SKeleton Intersection Loss (SKIL). SKIL is a loss designed for thin object segmentation that leverages the skeleton of the label. A dataset of RGB images from Pinnacles National Park was collected, manually annotated, and augmented. New metrics have been proposed for thin object segmentation such that the impact of the object width on the score is minimized. In addition, the metric is less sensitive to translation which can often lead to a score of zero when computing classical metrics such as dice on thin objects. Our fine-tuned models outperform previous methods on similar thin object segmentation tasks such as blood vessel segmentation and show promise for integration onto a robotic system.
+
+
+## Table of contents
+* [Installation](#installation)
+* [Datasets](#datasets)
+* [Recreate the results from the paper](#recreate)
+
+## Installation
+We provide a conda environment. Simply run:
+```bash
+conda env create -f environment.yml
+conda activate reachbot
+cd mmsegmentation
+pip install -e .
+```
+
+## Datasets
+To recreate the `cracks` dataset from you own image follow this [guide](./dataset_builder/README.md).
+
+To download our `cracks` dataset (already formatted), please use this [link](TODO). Then make sure to place the content of the dataset in `./datasets/cracks` (this folder should contain `ann_dir` and `img_dir`).
+
+To download the blood vessels datasets (`CHASE DB1`, `DRIVE`, `HRF` and `STARE`) please use `mmsegmentation`'s [guide](https://github.com/open-mmlab/mmsegmentation/blob/main/docs/en/user_guides/2_dataset_prepare.md#chase-db1). You can then use our script to combine the datasets; `dataset_combiner/dataset_combiner.py` *(Make sure to properly rename the images of each dataset for this, see the documentation of the script for more details)*. you can also generate the deformed datasets by modifying the `MODIFIERS` object.
+
+
+
+
+## <a name="recreate"></a>Recreate the results from the paper
+
+In this section we describe the exact commands to run the same experiments as us and recreate the exact same results. This include even figure like the first figure of the paper. All commands should be run inside the `reachbot` environment from `./mmsegmentation`.
+
+### Figure 1.
+To generate the mosaique of images you can use our script:
+```bash
+cd ../dataset_builder/generate_workflow_picture
+python split_image.py --input_path <PATH-TO-YOUR-IMAGE>
+```
+
+### Figures 2, 3 and 4
+Figure 2 was drawn and Figures 3 and 4 are images taken from the datasets.
+
+### Figure 5.
+To recreate Figure 5, we provide the script `dataset_builder/metrics_comparison.py`. Then run the script with different parameters to recreate the images:
+```bash
+cd ../dataset_builder
+python metrics_comparison.py --desired_dice 0.2 --desired_crack_metric_diff 0.2 --output_path metric_images_2
+python metrics_comparison.py --desired_dice 0.4 --desired_crack_metric_diff 0.2 --output_path metric_images_4
+python metrics_comparison.py --desired_dice 0.6 --desired_crack_metric_diff 0.2 --output_path metric_images_6
+```
+
+### Table I. and Figure 6.
+Run the following trainings:
+```bash
+python tools/train_repeat.py --num_repeats 20 --config \
+paper_configs/vit/cracks/dice.py \
+paper_configs/vit/cracks/cl_dice.py \
+paper_configs/vit/cracks/skil_dice.py \
+paper_configs/vit/cracks/skil_prod.py \
+-- --amp
+```
+
+### Table II. and Figure 7.
+Run the following trainings:
+```bash
+python tools/train_repeat.py --num_repeats 20 --config \
+paper_configs/vit/vessels/dice.py \
+paper_configs/vit/vessels/cl_dice.py \
+paper_configs/vit/vessels/skil_dice.py \
+paper_configs/vit/vessels/skil_prod.py \
+-- --amp
+```
+
+### Table III. and Figure 8.
+Run the following trainings:
+```bash
+python tools/train_repeat.py --num_repeats 10 --config \
+paper_configs/unet/cracks/ce.py \
+paper_configs/unet/cracks/cl_dice.py \
+paper_configs/unet/cracks/skil_dice.py \
+paper_configs/unet/cracks/skil_prod.py \
+-- --amp
+```
+
+### Table IV.
+Run the following trainings:
+```bash
+python tools/train_repeat.py --num_repeats 10 --config \
+paper_configs/unet/stare/ce.py \
+paper_configs/unet/stare/cl_dice.py \
+paper_configs/unet/stare/skil_dice.py \
+paper_configs/unet/stare/skil_prod.py \
+paper_configs/unet/chase/ce.py \
+paper_configs/unet/chase/cl_dice.py \
+paper_configs/unet/chase/skil_dice.py \
+paper_configs/unet/chase/skil_prod.py \
+-- --amp
+```
+
+### Figure 9.
+Run the following script. It will prompt a menu to choose the augmentation to run, choose the one you want.
+```bash
+cd ../dataset_builder
+python test_annotation_modifiers.py
+```
+
+### Tables V. and VI.
+Run the following trainings:
+```bash
+python tools/train_repeat.py --num_repeats 10 --config \
+paper_configs/vit/vessels_shifted/dice.py \
+paper_configs/vit/vessels_shifted/cl_dice.py \
+paper_configs/vit/vessels_shifted/skil_dice.py \
+paper_configs/vit/vessels_width/dice.py \
+paper_configs/vit/vessels_width/cl_dice.py \
+paper_configs/vit/vessels_width/skil_dice.py \
+paper_configs/vit/vessels_cropped/dice.py \
+paper_configs/vit/vessels_cropped/cl_dice.py \
+paper_configs/vit/vessels_cropped/skil_dice.py \
+paper_configs/vit/vessels_degraded/dice.py \
+paper_configs/vit/vessels_degraded/cl_dice.py \
+paper_configs/vit/vessels_degraded/skil_dice.py \
+-- --amp
+```
+Table VI. is then obtained by devising the entried of Table V. by the entried of Table II. (See paper fro more details).
+
+```
+python tools/train_repeat.py --num_repeats 10 --config \
+paper_configs/cracks/ce.py \
+paper_configs/cracks/cl_dice.py \
+paper_configs/cracks/skil.py \
+paper_configs/cracks/skil_prod.py \
+-- --amp
+```
+
+
+
+<!-- # Crack
 
 To get the data, check the `dataset_builder` `README` file.
 
-To train a model, check the `mmsegmentation` `README` file.
+To train a model, check the `mmsegmentation` `README` file. -->
 
 <!-- ## Installation
 
