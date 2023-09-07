@@ -14,7 +14,8 @@ class STAREDataset(BaseSegDataset):
     """
 
     METAINFO = dict(
-        classes=("background", "vessel"), palette=[[120, 120, 120], [6, 230, 230]]
+        classes=("background", "vessel"),
+        palette=[[0, 0, 0], [255, 255, 255]],  # [[120, 120, 120], [6, 230, 230]]
     )
 
     def __init__(
@@ -30,4 +31,4 @@ class STAREDataset(BaseSegDataset):
             reduce_zero_label=reduce_zero_label,
             **kwargs
         )
-        assert self.file_client.exists(self.data_prefix["img_path"])
+        # assert self.file_client.exists(self.data_prefix["img_path"])

@@ -9,15 +9,13 @@ losses_mappings = {
 
 # Associates a model name to its default weights
 default_checkpoint = {
-    "vit_vit-b16_mln_upernet": "pretrain/upernet_vit-b16_mln_512x512_80k_ade20k_20210624_130547-0403cee1_fix.pth"
+    "vit_vit-b16_mln_upernet_cracks": "pretrain/upernet_vit-b16_mln_512x512_80k_ade20k_20210624_130547-0403cee1_fix.pth",
+    "vit_vit-b16_mln_upernet_vessels": "pretrain/upernet_vit-b16_mln_512x512_80k_ade20k_20210624_130547-0403cee1_fix.pth",
 }
 
 # Associates a dataset name to its config file
 datasets_mappings = {
-    "cracks_full": "custom_configs.datasets.cracks_full",
-    "cracks_cropped": "custom_configs.datasets.cracks_cropped",
-    "cracks_full_combined": "custom_configs.datasets.cracks_full_combined",
-    "drive": "custom_configs.datasets.drive",
+    "cracks_combined": "custom_configs.datasets.cracks_combined",
     "vessels_combined": "custom_configs.datasets.vessels_combined",
     "vessels_combined_degraded": "custom_configs.datasets.vessels_combined_degraded",
     "vessels_combined_cropped": "custom_configs.datasets.vessels_combined_degraded_cropped",
@@ -28,4 +26,5 @@ datasets_mappings = {
 # Associates a learning rate schedule name to its config file
 schedules_mappings = {
     "aggressive": "custom_configs.schedules.aggressive",
+    "40k": "custom_configs.schedules.40k",
 }

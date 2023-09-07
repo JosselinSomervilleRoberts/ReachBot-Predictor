@@ -1,7 +1,7 @@
 def get_dataset(crop_size, train_batch_size):
     dataset_type = "ReachbotDataset"
-    data_root = "../datasets/cracks_seg_full/"
-    num_training_samples = 80
+    data_root = "../datasets/cracks_combined/"
+    num_training_samples = 186
 
     train_pipeline = [
         dict(type="LoadImageFromFile"),
