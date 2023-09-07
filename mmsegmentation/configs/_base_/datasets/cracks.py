@@ -1,6 +1,6 @@
 # dataset settings
 dataset_type = "ReachbotDataset"
-data_root = "../datasets/combined"
+data_root = "../datasets/cracks_combined"
 img_scale = (960, 999)
 crop_size = (128, 128)
 train_pipeline = [

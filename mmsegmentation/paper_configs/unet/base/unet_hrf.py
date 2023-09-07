@@ -1,4 +1,4 @@
-_base_ = "../../configs/unet/unet-s5-d16_deeplabv3_4xb4-40k_hrf-256x256.py"
+_base_ = "../../../configs/unet/unet-s5-d16_deeplabv3_4xb4-40k_hrf-256x256.py"
 
 # Metrics
 METRIC = "ReachbotMetric"
