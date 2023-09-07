@@ -24,11 +24,11 @@ pip install -e .
 ```
 
 ## Datasets
-To recreate the `cracks` dataset from you own image follow this [guide](./dataset_builder/README.md).
+To recreate the `cracks` dataset from you own image follow this [guide](./scripts/README.md).
 
 To download our `cracks` dataset (already formatted), please use this [link](TODO). Then make sure to place the content of the dataset in `./datasets/cracks` (this folder should contain `ann_dir` and `img_dir`).
 
-To download the blood vessels datasets (`CHASE DB1`, `DRIVE`, `HRF` and `STARE`) please use `mmsegmentation`'s [guide](https://github.com/open-mmlab/mmsegmentation/blob/main/docs/en/user_guides/2_dataset_prepare.md#chase-db1). You can then use our script to combine the datasets; `dataset_combiner/dataset_combiner.py` *(Make sure to properly rename the images of each dataset for this, see the documentation of the script for more details)*. you can also generate the deformed datasets by modifying the `MODIFIERS` object.
+To download the blood vessels datasets (`CHASE DB1`, `DRIVE`, `HRF` and `STARE`) please use `mmsegmentation`'s [guide](https://github.com/open-mmlab/mmsegmentation/blob/main/docs/en/user_guides/2_dataset_prepare.md#chase-db1). You can then use our script to combine the datasets; `scripts/dataset_combiner.py` *(Make sure to properly rename the images of each dataset for this, see the documentation of the script for more details)*. you can also generate the deformed datasets by modifying the `MODIFIERS` object.
 
 
 
@@ -40,7 +40,7 @@ In this section we describe the exact commands to run the same experiments as us
 ### Figure 1.
 To generate the mosaique of images you can use our script:
 ```bash
-cd ../dataset_builder/generate_workflow_picture
+cd ../scripts/generate_workflow_picture
 python split_image.py --input_path <PATH-TO-YOUR-IMAGE>
 ```
 
@@ -48,9 +48,9 @@ python split_image.py --input_path <PATH-TO-YOUR-IMAGE>
 Figure 2 was drawn and Figures 3 and 4 are images taken from the datasets.
 
 ### Figure 5.
-To recreate Figure 5, we provide the script `dataset_builder/metrics_comparison.py`. Then run the script with different parameters to recreate the images:
+To recreate Figure 5, we provide the script `scripts/metrics_comparison.py`. Then run the script with different parameters to recreate the images:
 ```bash
-cd ../dataset_builder
+cd ../scripts
 python metrics_comparison.py --desired_dice 0.2 --desired_crack_metric_diff 0.2 --output_path metric_images_2
 python metrics_comparison.py --desired_dice 0.4 --desired_crack_metric_diff 0.2 --output_path metric_images_4
 python metrics_comparison.py --desired_dice 0.6 --desired_crack_metric_diff 0.2 --output_path metric_images_6
@@ -116,7 +116,7 @@ See our Wandb runs:
 ### Figure 9.
 Run the following script. It will prompt a menu to choose the augmentation to run, choose the one you want.
 ```bash
-cd ../dataset_builder
+cd ../scripts
 python test_annotation_modifiers.py
 ```
 
@@ -150,7 +150,7 @@ See our Wandb runs:
 
 <!-- # Crack
 
-To get the data, check the `dataset_builder` `README` file.
+To get the data, check the `scripts` `README` file.
 
 To train a model, check the `mmsegmentation` `README` file. -->
 
