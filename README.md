@@ -1,5 +1,5 @@
 # SKIL - A Skeleton-based Approach For Rock Crack Detection Towards A Climbing Robot Application
-[paper](TODO) | [dataset](https://drive.google.com/drive/folders/1-3A6pQJ-ASxK9UKKm5T2XSwLYLYB8qZV)
+[paper](TODO) | [dataset](https://drive.google.com/drive/u/1/folders/17sY12DDCa3HJtsfwxTCeC6LKFZa3lUii)
 
 In proceedings - IEEE IRC 2023
 
@@ -23,10 +23,15 @@ cd mmsegmentation
 pip install -e .
 ```
 
+If this does not work, check this [link](./mmsegmentation/README.md) for the exact libraries to install.
+
 ## Datasets
+**We provide this [link](https://drive.google.com/drive/folders/1-3A6pQJ-ASxK9UKKm5T2XSwLYLYB8qZV) that contains all the required datasets (including the blood vessels). At the root of this repo *(here)*, create a folder called `datasets` and copy paste the content in the link. You will now be able to run all configs.**
+
+
 To recreate the `cracks` dataset from you own image follow this [guide](./scripts/README.md).
 
-To download our `cracks` dataset (already formatted), please use this [link](TODO). Then make sure to place the content of the dataset in `./datasets/cracks` (this folder should contain `ann_dir` and `img_dir`).
+To download our `cracks` dataset (already formatted), please use this [link](https://drive.google.com/drive/u/1/folders/17sY12DDCa3HJtsfwxTCeC6LKFZa3lUii). Then make sure to place the content of the dataset in `./datasets/cracks_combined` (this folder should contain `ann_dir` and `img_dir`).
 
 To download the blood vessels datasets (`CHASE DB1`, `DRIVE`, `HRF` and `STARE`) please use `mmsegmentation`'s [guide](https://github.com/open-mmlab/mmsegmentation/blob/main/docs/en/user_guides/2_dataset_prepare.md#chase-db1). You can then use our script to combine the datasets; `scripts/dataset_combiner.py` *(Make sure to properly rename the images of each dataset for this, see the documentation of the script for more details)*. you can also generate the deformed datasets by modifying the `MODIFIERS` object.
 

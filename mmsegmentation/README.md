@@ -17,10 +17,8 @@ pip install git+https://github.com/JosselinSomervilleRoberts/JossPythonToolbox.g
 pip install --upgrade --force-reinstall Pillow
 pip install nvidia-ml-py3
 pip install 'mmdet>=3.0.0rc0' 'mmsegmentation>=1.0.0rc0'
-
 pip install mmengine
 pip install mmcv
-
 pip install -e .
 ```
 
