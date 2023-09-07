@@ -22,6 +22,7 @@ conda activate reachbot
 cd mmsegmentation
 pip install -e .
 ```
+*(This is quite long and can take up to 20 minutes)*
 
 If this does not work, check this [link](./mmsegmentation/README.md) for the exact libraries to install.
 
