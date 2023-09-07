@@ -1,2 +1,0 @@
-faiss-gpu==1.7.2
-pandas
