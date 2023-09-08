@@ -66,10 +66,10 @@ DEBUG_PATH = None
 
 # PRODUCTION (to train a model and save the results)
 # No debugging but logging, visualization, saving, metrics every epoch
-LOG_STEP_INTERVAL = 10
+LOG_STEP_INTERVAL = 5
 DEBUG_STEP_INTERVAL = -1
 SAVE_EPOCH_INTERVAL = -1
-VISUALIZE_ONE_OUT_OF = 10
+VISUALIZE_ONE_OUT_OF = -1
 EVAL_EPOCH_INTERVAL = 5
 USE_WANDB = True
 WANDB_PROJECT_SUFFIX = "_prod"
