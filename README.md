@@ -73,7 +73,7 @@ paper_configs/vit/cracks/skil_prod.py \
 -- --amp
 ```
 See our Wandb run:
-* **Combined cracks** with ViT-B: [link](https://wandb.ai/single-shot-robot/SKIL-Reachbot_cracks_combined_segmentation_prod?workspace=user-)
+* **Combined cracks** with ViT-B: [link](https://wandb.ai/single-shot-robot/SKIL-Reachbot_cracks_combined_segmentation_prod?workspace=user-josselin)
 
 ### Table II. and Figure 7.
 Run the following trainings:
@@ -86,7 +86,7 @@ paper_configs/vit/vessels/skil_prod.py \
 -- --amp
 ```
 See our Wandb run:
-* **Combined vessels** with ViT-B: [link](https://wandb.ai/single-shot-robot/SKIL-Reachbot_vessels_combined_segmentation_prod?workspace=user-)
+* **Combined vessels** with ViT-B: [link](https://wandb.ai/single-shot-robot/SKIL-Reachbot_vessels_combined_segmentation_prod?workspace=user-josselin)
 
 ### Table III. and Figure 8.
 Run the following trainings:
@@ -99,7 +99,7 @@ paper_configs/unet/cracks/skil_prod.py \
 -- --amp
 ```
 See our Wandb run:
-* **Combined cracks** dataset with U-Net: [link](https://wandb.ai/single-shot-robot/SKIL-Reachbot_CRACKS_segmentation_prod?workspace=user-)
+* **Combined cracks** dataset with U-Net: [link](https://wandb.ai/single-shot-robot/SKIL-Reachbot_CRACKS_segmentation_prod?workspace=user-josselin)
 
 ### Table IV.
 Run the following trainings:
@@ -116,8 +116,8 @@ paper_configs/unet/drive/skil_prod.py \
 -- --amp
 ```
 See our Wandb runs:
-* **STARE** dataset with U-Net: [link](https://wandb.ai/single-shot-robot/SKIL-Reachbot_STARE_segmentation_prod?workspace=user-)
-* **DRIVE** dataset with U-Net: [link](https://wandb.ai/single-shot-robot/SKIL-Reachbot_DRIVE_segmentation_prod?workspace=user-)
+* **STARE** dataset with U-Net: [link](https://wandb.ai/single-shot-robot/SKIL-Reachbot_STARE_segmentation_prod?workspace=user-josselin)
+* **DRIVE** dataset with U-Net: [link](https://wandb.ai/single-shot-robot/SKIL-Reachbot_DRIVE_segmentation_prod?workspace=user-josselin)
 
 ### Figure 9.
 Run the following script. It will prompt a menu to choose the augmentation to run, choose the one you want.
@@ -147,10 +147,10 @@ paper_configs/vit/vessels_degraded/skil_dice.py \
 Table VI. is then obtained by devising the entried of Table V. by the entried of Table II. (See paper for more details).
 
 See our Wandb runs:
-* **Shifted** combined vessels dataset with U-Net: [link](https://wandb.ai/single-shot-robot/SKIL-Reachbot_vessels_combined_shifted_segmentation_prod?workspace=user-)
-* **Random width** combined vessels dataset with U-Net: [link](https://wandb.ai/single-shot-robot/SKIL-Reachbot_vessels_combined_width_segmentation_prod?workspace=user-)
-* **Branches cropped** combined vessels dataset with U-Net: [link](https://wandb.ai/single-shot-robot/SKIL-Reachbot_vessels_combined_cropped_segmentation_prod?workspace=user-)
-* **Combined deformations** combined vessels dataset with U-Net: [link](https://wandb.ai/single-shot-robot/SKIL-Reachbot_vessels_combined_degraded_segmentation_prod?workspace=user-)
+* **Shifted** combined vessels dataset with U-Net: [link](https://wandb.ai/single-shot-robot/SKIL-Reachbot_vessels_combined_shifted_segmentation_prod?workspace=user-josselin)
+* **Random width** combined vessels dataset with U-Net: [link](https://wandb.ai/single-shot-robot/SKIL-Reachbot_vessels_combined_width_segmentation_prod?workspace=user-josselin)
+* **Branches cropped** combined vessels dataset with U-Net: [link](https://wandb.ai/single-shot-robot/SKIL-Reachbot_vessels_combined_cropped_segmentation_prod?workspace=user-josselin)
+* **Combined deformations** combined vessels dataset with U-Net: [link](https://wandb.ai/single-shot-robot/SKIL-Reachbot_vessels_combined_degraded_segmentation_prod?workspace=user-josselin)
 
 
 
