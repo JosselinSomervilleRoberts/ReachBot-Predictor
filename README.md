@@ -1,13 +1,12 @@
 # SKIL - A Skeleton-based Approach For Rock Crack Detection Towards A Climbing Robot Application
-[paper](TODO) | [dataset](https://drive.google.com/drive/u/1/folders/17sY12DDCa3HJtsfwxTCeC6LKFZa3lUii)
+[paper](https://arxiv.org/abs/2309.05139) | [dataset](https://drive.google.com/drive/u/1/folders/17sY12DDCa3HJtsfwxTCeC6LKFZa3lUii)
 
 In proceedings - IEEE IRC 2023
 
 **Authors:** Josselin Somerville Roberts, Yoni Gozlan, Paul-Emile Giacomelli, Julia Di
 
 ## Abstract 
-Conventional wheeled robots are unable to traverse precipitous cave environments, which are of scientific interest for their exposed bedrock stratigraphy. Multi-limbed climbing robot designs, such as ReachBot, are able to grasp irregular surface features and execute climbing motions to overcome obstacles, given that they may find suitable grasp locations. To support grasp site identification, we present a method for detecting thin rock cracks and edges, the SKeleton Intersection Loss (SKIL). SKIL is a loss designed for thin object segmentation that leverages the skeleton of the label. A dataset of RGB images from Pinnacles National Park was collected, manually annotated, and augmented. New metrics have been proposed for thin object segmentation such that the impact of the object width on the score is minimized. In addition, the metric is less sensitive to translation which can often lead to a score of zero when computing classical metrics such as dice on thin objects. Our fine-tuned models outperform previous methods on similar thin object segmentation tasks such as blood vessel segmentation and show promise for integration onto a robotic system.
-
+Conventional wheeled robots are unable to traverse scientifically interesting, but dangerous, cave environments. Multi-limbed climbing robot designs, such as ReachBot, are able to grasp irregular surface features and execute climbing motions to overcome obstacles, given suitable grasp locations. To support grasp site identification, we present a method for detecting rock cracks and edges, the SKeleton Intersection Loss (SKIL). SKIL is a loss designed for thin object segmentation that leverages the skeleton of the label. A dataset of rock face images was collected, manually annotated, and augmented with generated data. A new group of metrics, LineAcc, has been proposed for thin object segmentation such that the impact of the object width on the score is minimized. In addition, the metric is less sensitive to translation which can often lead to a score of zero when computing classical metrics such as Dice on thin objects. Our fine-tuned models outperform previous methods on similar thin object segmentation tasks such as blood vessel segmentation and show promise for integration onto a robotic system.
 
 ## Table of contents
 * [Installation](#installation)
