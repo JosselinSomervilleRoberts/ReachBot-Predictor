@@ -1,4 +1,4 @@
-# SKIL - A Skeleton-based Approach For Rock Crack Detection Towards A Climbing Robot Application
+# A Skeleton-based Approach For Rock Crack Detection Towards A Climbing Robot Application
 [paper](https://arxiv.org/abs/2309.05139) | [dataset](https://drive.google.com/drive/u/1/folders/17sY12DDCa3HJtsfwxTCeC6LKFZa3lUii)
 
 In proceedings - IEEE IRC 2023
